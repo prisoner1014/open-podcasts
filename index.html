@@ -1754,6 +1754,35 @@
       border-color: #34A853 !important;
       font-weight: 700;
     }
+    .voice-boost-toggle-btn {
+      height: 34px;
+      padding: 0 16px;
+      border-radius: 17px;
+      border: 1px solid var(--divider);
+      background: var(--surface-variant);
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .voice-boost-toggle-btn.active {
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-color: #1a73e8;
+    }
+    .pill-action.boost-active {
+      background: #e8f0fe !important;
+      color: #1a73e8 !important;
+      border-color: #1a73e8 !important;
+      font-weight: 700;
+    }
+    body.dark-mode .voice-boost-toggle-btn.active,
+    body.dark-mode .pill-action.boost-active {
+      background: #174ea6 !important;
+      color: #d2e3fc !important;
+      border-color: #8ab4f8 !important;
+    }
     .add-rss-action-btn {
       display: inline-flex;
       align-items: center;
@@ -1894,7 +1923,7 @@
           <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
         </svg>
       </button>
-      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v1.6</button>
+      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v1.7</button>
       <button class="icon-button" id="headerSearchBtn" title="Search">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       </button>
@@ -2197,6 +2226,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
         <span id="trimPillLabel">Trim: OFF</span>
       </button>
+      <button class="pill-action" id="voiceBoostPillBtn" title="Boost dialogue volume & clarity">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        <span id="voiceBoostPillLabel">Boost: OFF</span>
+      </button>
       <button class="pill-action" id="timerPillBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/></svg>
         <span id="timerLabel">Timer</span>
@@ -2281,6 +2314,18 @@
         <button class="trim-silence-toggle-btn" id="modalTrimSilenceToggle">OFF</button>
       </div>
 
+      <!-- Voice Boost Dialogue Normalization Row -->
+      <div style="border-top:1px solid var(--divider-light); padding-top:16px; margin-top:16px; display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-size:14.5px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#1a73e8"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            Voice Boost
+          </div>
+          <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Amplify & level voices for noisy environments</div>
+        </div>
+        <button class="voice-boost-toggle-btn" id="modalVoiceBoostToggle">OFF</button>
+      </div>
+
       <div style="margin-top:20px;">
         <button class="composer-submit-btn" id="doneSpeedModalBtn" style="width:100%; height:40px; font-size:14px;">Done</button>
       </div>
@@ -2339,18 +2384,32 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <div>
           <div class="modal-title" style="margin-bottom:2px; font-size:18px;">Version History</div>
-          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v1.6 • Current Release</div>
+          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v1.7 • Current Release</div>
         </div>
         <button class="icon-button" id="closeVersionModalBtn" style="width:36px; height:36px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </div>
 
-      <!-- Release v1.6 (CURRENT - Dark Mode) -->
+      <!-- Release v1.7 (CURRENT - Voice Boost) -->
       <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:2px solid var(--primary);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.6</span>
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.7</span>
           <span style="background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;">LATEST</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 10</div>
+        <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
+          <li><strong>Voice Boost & Dialogue Normalization:</strong> Hardware-accelerated Android AudioFX LoudnessEnhancer and Web Audio DynamicsCompressor boost quiet speech (+8.0 dB) and level uneven volumes without clipping or distortion.</li>
+          <li><strong>1-Tap Voice Boost Pill:</strong> Quick toggle directly in the Now Playing sheet controls and in the Audio & Speed settings modal.</li>
+          <li><strong>Dual Persistence:</strong> Remembers your Voice Boost preference across app restarts in both Android SharedPreferences and browser storage.</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.6 (Dark Mode) -->
+      <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:1px solid var(--divider-light); opacity:0.95;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.6</span>
+          <span style="background:var(--surface); color:var(--text-secondary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid var(--divider);">BUILD 9</span>
         </div>
         <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 9</div>
         <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
@@ -2571,6 +2630,11 @@
         this.playbackRate = 1.0;
         this.currentAudioUrl = '';
         this.silenceSkipTimer = null;
+        this.voiceBoost = false;
+        this.audioCtx = null;
+        this.audioSource = null;
+        this.compressor = null;
+        this.makeupGain = null;
 
         if (this.html5) {
           this.html5.onended = () => {
@@ -2583,6 +2647,64 @@
               if (app) app.onPlaybackTick(this.currentTime, this.duration);
             }
           };
+        }
+      }
+
+      initWebAudio() {
+        if (this.audioCtx || !this.html5) return;
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          this.audioCtx = new AudioContext();
+          this.audioSource = this.audioCtx.createMediaElementSource(this.html5);
+
+          // DynamicsCompressorNode for vocal leveling & peak control
+          this.compressor = this.audioCtx.createDynamicsCompressor();
+          this.compressor.threshold.setValueAtTime(-24, this.audioCtx.currentTime);
+          this.compressor.knee.setValueAtTime(25, this.audioCtx.currentTime);
+          this.compressor.ratio.setValueAtTime(4.5, this.audioCtx.currentTime);
+          this.compressor.attack.setValueAtTime(0.005, this.audioCtx.currentTime);
+          this.compressor.release.setValueAtTime(0.2, this.audioCtx.currentTime);
+
+          // Makeup GainNode (+4.5 dB speech clarity boost)
+          this.makeupGain = this.audioCtx.createGain();
+          this.makeupGain.gain.setValueAtTime(1.65, this.audioCtx.currentTime);
+
+          this.updateAudioRouting();
+        } catch(e) {
+          console.warn('Web Audio initialization error:', e);
+        }
+      }
+
+      updateAudioRouting() {
+        if (!this.audioCtx || !this.audioSource) return;
+        try {
+          if (this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume();
+          }
+          this.audioSource.disconnect();
+          if (this.voiceBoost) {
+            this.audioSource.connect(this.compressor);
+            this.compressor.connect(this.makeupGain);
+            this.makeupGain.connect(this.audioCtx.destination);
+          } else {
+            this.audioSource.connect(this.audioCtx.destination);
+          }
+        } catch(e) {
+          console.warn('updateAudioRouting error:', e);
+        }
+      }
+
+      setVoiceBoost(enabled) {
+        this.voiceBoost = !!enabled;
+        if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.setVoiceBoost) {
+          try {
+            window.AndroidBridge.setVoiceBoost(this.voiceBoost);
+          } catch(e) {}
+        }
+        if (this.html5) {
+          this.initWebAudio();
+          this.updateAudioRouting();
         }
       }
 
@@ -2853,6 +2975,7 @@
         this.pendingFirstSkip = 0;
         this.configuringShow = null;
         this.isDarkMode = false;
+        this.voiceBoost = false;
 
         // Load Persistent Queue, Downloads, and History
         this.loadStorage();
@@ -3082,6 +3205,58 @@
           }
         } catch(e) {
           this.applyTheme(false, false);
+        }
+
+        // Voice Boost preference dual-persistence
+        try {
+          let vb = null;
+          if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.getNativePref) {
+            vb = window.AndroidBridge.getNativePref('gp_voice_boost', '');
+          }
+          if (!vb) vb = localStorage.getItem('gp_voice_boost');
+          this.voiceBoost = (vb === 'true');
+          this.audio.setVoiceBoost(this.voiceBoost);
+          this.updateVoiceBoostUI();
+        } catch(e) { this.voiceBoost = false; }
+      }
+
+      toggleVoiceBoost() {
+        this.voiceBoost = !this.voiceBoost;
+        this.audio.setVoiceBoost(this.voiceBoost);
+        this.updateVoiceBoostUI();
+
+        try {
+          localStorage.setItem('gp_voice_boost', String(this.voiceBoost));
+          if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.saveNativePref) {
+            window.AndroidBridge.saveNativePref('gp_voice_boost', String(this.voiceBoost));
+          }
+        } catch(e) {}
+
+        this.showToast(this.voiceBoost ? 'Voice Boost ON: Dialogue amplified & leveled' : 'Voice Boost OFF');
+      }
+
+      updateVoiceBoostUI() {
+        const toggleBtn = this.safeEl('modalVoiceBoostToggle');
+        if (toggleBtn) {
+          if (this.voiceBoost) {
+            toggleBtn.textContent = 'ON';
+            toggleBtn.classList.add('active');
+          } else {
+            toggleBtn.textContent = 'OFF';
+            toggleBtn.classList.remove('active');
+          }
+        }
+
+        const pill = this.safeEl('voiceBoostPillBtn');
+        const label = this.safeEl('voiceBoostPillLabel');
+        if (pill && label) {
+          if (this.voiceBoost) {
+            pill.classList.add('boost-active');
+            label.textContent = 'Boost: ON';
+          } else {
+            pill.classList.remove('boost-active');
+            label.textContent = 'Boost: OFF';
+          }
         }
       }
 
@@ -4608,6 +4783,12 @@
         if (modalTrimToggle) modalTrimToggle.onclick = () => this.toggleTrimSilence();
         const trimPill = this.safeEl('trimPillBtn');
         if (trimPill) trimPill.onclick = () => this.toggleTrimSilence();
+
+        // Voice Boost Toggles
+        const modalVbToggle = this.safeEl('modalVoiceBoostToggle');
+        if (modalVbToggle) modalVbToggle.onclick = () => this.toggleVoiceBoost();
+        const vbPill = this.safeEl('voiceBoostPillBtn');
+        if (vbPill) vbPill.onclick = () => this.toggleVoiceBoost();
 
         // Custom RSS Feed Modal
         const openRssBtn = this.safeEl('openRssFeedBtn');

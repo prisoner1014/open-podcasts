@@ -8,7 +8,19 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [v1.6.0] - 2026-11-03 (Build 9) - LATEST
+## [v1.7.0] - 2026-11-03 (Build 10) - LATEST
+
+### Summary
+Advanced Voice Boost & Dialogue Normalization engine providing crystal-clear speech leveling in noisy environments (cars, commutes, workouts) without audio clipping or distortion:
+- **Dual Hardware & DSP Voice Processing**:
+  - **Native Android Hardware LoudnessEnhancer**: Integrates with Android's native `android.media.audiofx.LoudnessEnhancer` audio session, amplifying vocal frequencies by +8.0 dB (800 mB) with dynamic peak limiting to eliminate clipping.
+  - **Web Audio DynamicsCompressorNode**: When streaming in browser or web modes, routes audio through a 4.5:1 ratio dynamic compressor (`threshold: -24 dB`, `knee: 25 dB`, `attack: 5 ms`, `release: 200 ms`) paired with makeup gain (`+4.5 dB`).
+- **1-Tap Quick Voice Boost Pill**: Added dedicated Voice Boost action button in Now Playing sheet and toggle switch inside the Playback Speed & Audio settings modal.
+- **Dual-Layer Persistence**: Saves state to Android `SharedPreferences` (`gp_voice_boost`) and browser `localStorage`, seamlessly maintaining your listening enhancement across reboots.
+
+---
+
+## [v1.6.0] - 2026-11-03 (Build 9)
 
 ### Summary
 Full-featured Dark Mode theme with OLED high-contrast palette, quick header toggle, persistent theme storage, and synchronized native Android system bars:

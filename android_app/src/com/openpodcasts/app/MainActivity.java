@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
+import android.media.audiofx.LoudnessEnhancer;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -47,6 +48,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 public class MainActivity extends Activity {
     private WebView webView;
     private MediaPlayer mediaPlayer;
+    private LoudnessEnhancer loudnessEnhancer;
+    private boolean isVoiceBoostEnabled = false;
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable progressRunnable;
     private String currentAudioUrl = "";
@@ -166,6 +169,7 @@ public class MainActivity extends Activity {
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(mp -> {
             mp.start();
+            applyVoiceBoost();
             int durationSec = mp.getDuration() / 1000;
             runOnUiThread(() -> {
                 webView.evaluateJavascript("if(window.onNativePlayerReady) window.onNativePlayerReady(" + durationSec + ");", null);
@@ -211,7 +215,33 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void applyVoiceBoost() {
+        try {
+            if (mediaPlayer != null) {
+                int sessionId = mediaPlayer.getAudioSessionId();
+                if (loudnessEnhancer == null) {
+                    loudnessEnhancer = new LoudnessEnhancer(sessionId);
+                }
+                if (loudnessEnhancer != null) {
+                    // +8.0 dB target speech gain leveling (800 mB) with limiter
+                    loudnessEnhancer.setTargetGain(isVoiceBoostEnabled ? 800 : 0);
+                    loudnessEnhancer.setEnabled(isVoiceBoostEnabled);
+                }
+            }
+        } catch (Exception e) {
+            Log.e("OpenPodcastsApp", "applyVoiceBoost error: " + e.getMessage());
+        }
+    }
+
     public class PodcastNativeBridge {
+        @JavascriptInterface
+        public void setVoiceBoost(boolean enabled) {
+            runOnUiThread(() -> {
+                isVoiceBoostEnabled = enabled;
+                applyVoiceBoost();
+            });
+        }
+
         @JavascriptInterface
         public void playAudio(String audioUrl) {
             runOnUiThread(() -> {
@@ -813,6 +843,10 @@ public class MainActivity extends Activity {
         if (mediaPlayer != null) {
             try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
+        }
+        if (loudnessEnhancer != null) {
+            try { loudnessEnhancer.release(); } catch (Exception ignored) {}
+            loudnessEnhancer = null;
         }
         if (networkExecutor != null) {
             try { networkExecutor.shutdownNow(); } catch (Exception ignored) {}
