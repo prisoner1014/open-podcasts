@@ -8,7 +8,18 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [v1.4.2] - 2026-11-03 (Build 7) - LATEST
+## [v1.5.0] - 2026-11-03 (Build 8) - LATEST
+
+### Summary
+Comprehensive Ad-Skipping suite: Per-podcast automated Intro & Outro skipping and 1-tap Smart "Skip Ad" (+60s) action button:
+- **Per-Podcast Auto-Skip Intro (Pre-roll Ads)**: Configure custom intro skip durations (`0s`, `15s`, `30s`, `45s`, `60s`, `90s`, `120s`). When starting any episode of that podcast, playback automatically jumps past sponsor intro reads.
+- **Per-Podcast Auto-Skip Outro (Post-roll Ads)**: Configure custom outro skip thresholds (`0s`, `15s`, `30s`, `45s`, `60s`, `90s`). When an episode approaches its conclusion, the player automatically ends and advances, skipping credits and outro promos.
+- **Dedicated Smart "Skip Ad" Button (+60s)**: Added a 1-tap `Skip Ad (+60s)` action button directly in the Now Playing sheet controls for quick commercial break bypass.
+- **Dual-Layer Persistence**: All show skip configurations persist permanently across app restarts via Android `SharedPreferences` and browser storage (`gp_skip_settings`).
+
+---
+
+## [v1.4.2] - 2026-11-03 (Build 7)
 
 ### Summary
 Multi-podcast subscription support from active search results:

@@ -1720,6 +1720,83 @@
       background: var(--primary-container);
     }
 
+    /* Skip Ad Smart Button */
+    .seek-ad-btn {
+      height: 48px;
+      padding: 0 14px;
+      border-radius: 24px;
+      background: var(--surface-variant);
+      border: 1.5px solid var(--primary-container);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12.5px;
+      transition: all 0.15s;
+    }
+    .seek-ad-btn:active {
+      transform: scale(0.95);
+      background: var(--primary-container);
+    }
+    .seek-ad-badge {
+      background: var(--primary);
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    /* Show Settings Gear Button */
+    .show-settings-gear-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--surface-variant);
+      border: 1px solid var(--divider-light);
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .show-settings-gear-btn:active {
+      background: var(--primary-container);
+      color: var(--primary);
+      transform: rotate(30deg);
+    }
+
+    /* Skip Interval Picker Chips */
+    .skip-chips-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-top: 8px;
+    }
+    .skip-chip {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--divider);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .skip-chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
     /* Toast */
     .toast {
       position: fixed;
@@ -1903,7 +1980,12 @@
         <div class="show-banner-info">
           <h1 class="show-banner-title" id="detailTitle">Show Title</h1>
           <div class="show-banner-author" id="detailAuthor">Author</div>
-          <button class="show-banner-sub-btn" id="detailSubBtn">Subscribe</button>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+            <button class="show-banner-sub-btn" id="detailSubBtn" style="margin-top:0;">Subscribe</button>
+            <button class="show-settings-gear-btn" id="showSettingsBtn" title="Auto-Skip Intro/Outro Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            </button>
+          </div>
         </div>
       </div>
       <p class="show-desc-text" id="detailDesc">Description</p>
@@ -2025,7 +2107,7 @@
       </div>
     </div>
 
-    <div class="sheet-controls-row">
+    <div class="sheet-controls-row" style="gap:20px;">
       <button class="seek-btn" id="sheetRewindBtn" title="Rewind 10s">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
         <span>10</span>
@@ -2036,6 +2118,11 @@
       <button class="seek-btn" id="sheetForwardBtn" title="Forward 30s">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
         <span>30</span>
+      </button>
+      <button class="seek-ad-btn" id="sheetSkipAdBtn" title="Quick Skip Sponsor/Ad (+60s)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/><path d="M19 6h2v12h-2z"/></svg>
+        <span>Skip Ad</span>
+        <span class="seek-ad-badge">+60s</span>
       </button>
     </div>
 
@@ -2306,6 +2393,58 @@
     </div>
   </div>
 
+  <!-- Podcast Playback Settings: Auto-Skip Intro & Outro Modal -->
+  <div class="modal-backdrop" id="autoSkipModalBackdrop">
+    <div class="modal-sheet" style="padding: 22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+          <div class="modal-title" style="margin-bottom:2px; font-size:18px;">Playback &amp; Ad-Skip Settings</div>
+          <div style="font-size:12.5px; color:var(--text-secondary);" id="autoSkipShowTitle">Configure show playback</div>
+        </div>
+        <button class="icon-button" id="closeAutoSkipModalBtn" style="width:36px; height:36px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
+      <!-- Skip Intro (Pre-roll Ads) -->
+      <div style="margin-bottom:18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:14px; font-weight:700; color:var(--text-primary);">Skip First (Intro / Pre-roll):</span>
+          <span style="font-size:13px; font-weight:700; color:var(--primary);" id="skipFirstLabel">0s (Off)</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Automatically jump past sponsor intro reads when starting an episode</div>
+        <div class="skip-chips-row" id="skipFirstChipsRow">
+          <button class="skip-chip active" data-sec="0">0s (Off)</button>
+          <button class="skip-chip" data-sec="15">15s</button>
+          <button class="skip-chip" data-sec="30">30s</button>
+          <button class="skip-chip" data-sec="45">45s</button>
+          <button class="skip-chip" data-sec="60">60s</button>
+          <button class="skip-chip" data-sec="90">90s</button>
+          <button class="skip-chip" data-sec="120">120s (2m)</button>
+        </div>
+      </div>
+
+      <!-- Skip Outro (Post-roll Ads) -->
+      <div style="margin-bottom:22px; border-top:1px solid var(--divider-light); padding-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:14px; font-weight:700; color:var(--text-primary);">Skip Last (Outro / Post-roll):</span>
+          <span style="font-size:13px; font-weight:700; color:var(--primary);" id="skipLastLabel">0s (Off)</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Automatically skip ending credits and outro promos</div>
+        <div class="skip-chips-row" id="skipLastChipsRow">
+          <button class="skip-chip active" data-sec="0">0s (Off)</button>
+          <button class="skip-chip" data-sec="15">15s</button>
+          <button class="skip-chip" data-sec="30">30s</button>
+          <button class="skip-chip" data-sec="45">45s</button>
+          <button class="skip-chip" data-sec="60">60s</button>
+          <button class="skip-chip" data-sec="90">90s</button>
+        </div>
+      </div>
+
+      <button class="composer-submit-btn" id="saveAutoSkipModalBtn" style="width:100%; height:40px; font-size:14px;">Save Settings</button>
+    </div>
+  </div>
+
   <div class="toast" id="toast">Message</div>
 
   <audio id="html5Audio" preload="auto"></audio>
@@ -2388,6 +2527,15 @@
           this.html5.src = episode.audioUrl;
           this.html5.playbackRate = this.playbackRate;
           this.html5.play().catch(e => console.log(e));
+          if (app && app.pendingFirstSkip > 0) {
+            const skipSec = app.pendingFirstSkip;
+            app.pendingFirstSkip = 0;
+            this.html5.oncanplay = () => {
+              this.html5.oncanplay = null;
+              this.seekTo(skipSec);
+              app.showToast(`Auto-skipped intro (+${skipSec}s)`);
+            };
+          }
         }
 
         this.startTrimSilenceMonitor();
@@ -2518,6 +2666,17 @@
         app.audio.duration = durSec;
         app.audio.isPlaying = true;
         app.onPlaybackStateChange(true);
+
+        if (app.pendingFirstSkip > 0) {
+          const skipTarget = Math.min(durSec - 10, app.pendingFirstSkip);
+          app.pendingFirstSkip = 0;
+          if (skipTarget > 0) {
+            setTimeout(() => {
+              app.audio.seekTo(skipTarget);
+              app.showToast(`Auto-skipped intro (+${skipTarget}s)`);
+            }, 100);
+          }
+        }
       }
     };
 
@@ -2604,6 +2763,9 @@
         this.searchDebounce = null;
         this.lastQueryId = 0;
         this.currentSearchResults = null;
+        this.skipSettings = {}; // { [showId]: { skipFirst: number, skipLast: number } }
+        this.pendingFirstSkip = 0;
+        this.configuringShow = null;
 
         // Load Persistent Queue, Downloads, and History
         this.loadStorage();
@@ -2803,6 +2965,16 @@
           const acBtn = this.safeEl('toggleAutoCleanupBtn');
           if (acBtn) acBtn.textContent = `Auto-delete: ${this.autoCleanup ? 'ON' : 'OFF'}`;
         } catch(e) { this.autoCleanup = true; }
+
+        // Per-podcast skip settings dual-persistence
+        try {
+          let ss = null;
+          if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.getNativePref) {
+            ss = window.AndroidBridge.getNativePref('gp_skip_settings', '');
+          }
+          if (!ss) ss = localStorage.getItem('gp_skip_settings');
+          this.skipSettings = ss ? JSON.parse(ss) : {};
+        } catch(e) { this.skipSettings = {}; }
       }
 
       setGranularSpeed(spd, save = true) {
@@ -3756,6 +3928,14 @@
 
         this.updateSheetDownloadButton();
 
+        // Check if podcast has auto-skip intro settings
+        const showSettings = this.currentShow ? (this.skipSettings[this.currentShow.id] || null) : null;
+        if (showSettings && showSettings.skipFirst > 0) {
+          this.pendingFirstSkip = showSettings.skipFirst;
+        } else {
+          this.pendingFirstSkip = 0;
+        }
+
         if (autoPlay) {
           this.audio.play(ep);
           this.addToHistory(ep, this.currentShow);
@@ -4021,6 +4201,18 @@
         this.safeEl('scrubberSlider').value = pct;
         this.safeEl('elapsedTime').textContent = this.formatTime(cur);
         this.safeEl('remainingTime').textContent = '-' + this.formatTime(Math.max(0, total - cur));
+
+        // Auto-skip outro if configured for this podcast
+        if (total > 60 && cur > 30) {
+          const showSettings = this.currentShow ? (this.skipSettings[this.currentShow.id] || null) : null;
+          if (showSettings && showSettings.skipLast > 0) {
+            const remaining = total - cur;
+            if (remaining <= showSettings.skipLast && remaining > 1) {
+              this.showToast(`Auto-skipped outro (${showSettings.skipLast}s remaining)`);
+              this.handleEpisodeEnded();
+            }
+          }
+        }
       }
 
       onPlaybackStateChange(isPlaying) {
@@ -4169,6 +4361,13 @@
           this.audio.seek(30);
           this.showToast('+30 seconds');
         };
+        const skipAdBtn = this.safeEl('sheetSkipAdBtn');
+        if (skipAdBtn) {
+          skipAdBtn.onclick = () => {
+            this.audio.seek(60);
+            this.showToast('Skipped Sponsor/Ad (+60s)');
+          };
+        }
         this.safeEl('scrubberSlider').oninput = (e) => {
           this.audio.seekToPercent(e.target.value);
         };
@@ -4467,6 +4666,97 @@
           }
         };
 
+        // Show Playback & Auto-Skip Settings Modal
+        const showSettingsBtn = this.safeEl('showSettingsBtn');
+        const autoSkipModal = this.safeEl('autoSkipModalBackdrop');
+        const closeAutoSkipBtn = this.safeEl('closeAutoSkipModalBtn');
+        const saveAutoSkipBtn = this.safeEl('saveAutoSkipModalBtn');
+
+        let currentModalSkipFirst = 0;
+        let currentModalSkipLast = 0;
+
+        const updateSkipChipsUI = (rowId, activeSec) => {
+          document.querySelectorAll(`#${rowId} .skip-chip`).forEach(chip => {
+            const sec = parseInt(chip.getAttribute('data-sec'), 10);
+            if (sec === activeSec) {
+              chip.classList.add('active');
+            } else {
+              chip.classList.remove('active');
+            }
+          });
+        };
+
+        if (showSettingsBtn && autoSkipModal) {
+          showSettingsBtn.onclick = () => {
+            if (!this.currentShow) return;
+            this.configuringShow = this.currentShow;
+            this.safeEl('autoSkipShowTitle').textContent = `Auto-Skip for: ${this.currentShow.title}`;
+
+            const settings = this.skipSettings[this.currentShow.id] || { skipFirst: 0, skipLast: 0 };
+            currentModalSkipFirst = settings.skipFirst || 0;
+            currentModalSkipLast = settings.skipLast || 0;
+
+            this.safeEl('skipFirstLabel').textContent = currentModalSkipFirst > 0 ? `${currentModalSkipFirst}s` : '0s (Off)';
+            this.safeEl('skipLastLabel').textContent = currentModalSkipLast > 0 ? `${currentModalSkipLast}s` : '0s (Off)';
+
+            updateSkipChipsUI('skipFirstChipsRow', currentModalSkipFirst);
+            updateSkipChipsUI('skipLastChipsRow', currentModalSkipLast);
+
+            autoSkipModal.classList.add('open');
+          };
+        }
+
+        document.querySelectorAll('#skipFirstChipsRow .skip-chip').forEach(chip => {
+          chip.onclick = () => {
+            currentModalSkipFirst = parseInt(chip.getAttribute('data-sec'), 10);
+            this.safeEl('skipFirstLabel').textContent = currentModalSkipFirst > 0 ? `${currentModalSkipFirst}s` : '0s (Off)';
+            updateSkipChipsUI('skipFirstChipsRow', currentModalSkipFirst);
+          };
+        });
+
+        document.querySelectorAll('#skipLastChipsRow .skip-chip').forEach(chip => {
+          chip.onclick = () => {
+            currentModalSkipLast = parseInt(chip.getAttribute('data-sec'), 10);
+            this.safeEl('skipLastLabel').textContent = currentModalSkipLast > 0 ? `${currentModalSkipLast}s` : '0s (Off)';
+            updateSkipChipsUI('skipLastChipsRow', currentModalSkipLast);
+          };
+        });
+
+        if (closeAutoSkipBtn && autoSkipModal) {
+          closeAutoSkipBtn.onclick = () => autoSkipModal.classList.remove('open');
+        }
+
+        if (saveAutoSkipBtn && autoSkipModal) {
+          saveAutoSkipBtn.onclick = () => {
+            if (this.configuringShow) {
+              this.skipSettings[this.configuringShow.id] = {
+                skipFirst: currentModalSkipFirst,
+                skipLast: currentModalSkipLast
+              };
+              try {
+                const data = JSON.stringify(this.skipSettings);
+                localStorage.setItem('gp_skip_settings', data);
+                if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.saveNativePref) {
+                  window.AndroidBridge.saveNativePref('gp_skip_settings', data);
+                }
+              } catch(e) {}
+              const msg = currentModalSkipFirst > 0 || currentModalSkipLast > 0
+                ? `Saved: Skip First ${currentModalSkipFirst}s, Skip Last ${currentModalSkipLast}s`
+                : 'Auto-skip turned off for this show';
+              this.showToast(msg);
+            }
+            autoSkipModal.classList.remove('open');
+          };
+        }
+
+        if (autoSkipModal) {
+          autoSkipModal.onclick = (e) => {
+            if (e.target.classList.contains('modal-backdrop')) {
+              autoSkipModal.classList.remove('open');
+            }
+          };
+        }
+
         // Back button support for Android
         window.handleBackPress = () => {
           if (this.safeEl('nowPlayingSheet').classList.contains('open')) {
@@ -4474,6 +4764,10 @@
             return true;
           }
           if (this.safeEl('showDetailView').classList.contains('active')) {
+            if (this.safeEl('autoSkipModalBackdrop') && this.safeEl('autoSkipModalBackdrop').classList.contains('open')) {
+              this.safeEl('autoSkipModalBackdrop').classList.remove('open');
+              return true;
+            }
             this.closeShowDetail();
             return true;
           }
