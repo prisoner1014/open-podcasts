@@ -28,6 +28,7 @@ import android.os.SystemClock;
 import android.service.media.MediaBrowserService;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.LruCache;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -72,12 +73,12 @@ public class AutoMediaBrowserService extends MediaBrowserService {
     private MediaSession mediaSession;
     private MediaPlayer mediaPlayer;
     private Handler handler = new Handler(Looper.getMainLooper());
-    private ExecutorService executor = Executors.newFixedThreadPool(4);
+    private ExecutorService executor = Executors.newFixedThreadPool(2);
 
     private List<JSONObject> showsList = new ArrayList<>();
     private Map<String, JSONObject> episodeCache = new HashMap<>();
     private Map<String, String> episodePodcastMap = new HashMap<>();
-    private Map<String, Bitmap> artworkCache = new HashMap<>();
+    private LruCache<String, Bitmap> artworkCache = new LruCache<>(6);
 
     private String currentMediaId = "";
     private JSONObject currentEpisode = null;
@@ -261,6 +262,19 @@ public class AutoMediaBrowserService extends MediaBrowserService {
             mediaSession.release();
             mediaSession = null;
         }
+
+        if (executor != null) {
+            try {
+                executor.shutdownNow();
+            } catch (Exception ignored) {}
+        }
+        if (artworkCache != null) {
+            artworkCache.evictAll();
+        }
+        showsList.clear();
+        episodeCache.clear();
+        episodePodcastMap.clear();
+
         super.onDestroy();
     }
 
@@ -411,6 +425,7 @@ public class AutoMediaBrowserService extends MediaBrowserService {
     }
 
     private void loadCatalogData() {
+        if (!showsList.isEmpty()) return;
         showsList.clear();
         episodeCache.clear();
         episodePodcastMap.clear();
@@ -730,17 +745,43 @@ public class AutoMediaBrowserService extends MediaBrowserService {
 
     private void fetchArtworkAsync(final String artworkUrl, final String mediaId) {
         if (TextUtils.isEmpty(artworkUrl)) return;
+        if (artworkCache.get(mediaId) != null) return;
         executor.execute(new Runnable() {
             @Override
             public void run() {
+                HttpURLConnection conn = null;
                 try {
                     URL url = new URL(artworkUrl);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(5000);
-                    conn.setReadTimeout(5000);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(4000);
+                    conn.setReadTimeout(4000);
+
+                    // Decode bounds only
+                    BitmapFactory.Options opt = new BitmapFactory.Options();
+                    opt.inJustDecodeBounds = true;
                     InputStream is = conn.getInputStream();
-                    final Bitmap bmp = BitmapFactory.decodeStream(is);
+                    BitmapFactory.decodeStream(is, null, opt);
                     is.close();
+                    conn.disconnect();
+
+                    // Calculate downsample factor targeting max 256px for notification/car
+                    int sample = 1;
+                    int maxDim = Math.max(opt.outWidth, opt.outHeight);
+                    if (maxDim > 256) {
+                        sample = Math.max(1, maxDim / 256);
+                    }
+
+                    // Decode actual bitmap scaled down with RGB_565 (2 bytes/px vs 4 bytes/px)
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(4000);
+                    conn.setReadTimeout(4000);
+                    InputStream is2 = conn.getInputStream();
+                    BitmapFactory.Options decodeOpt = new BitmapFactory.Options();
+                    decodeOpt.inSampleSize = sample;
+                    decodeOpt.inPreferredConfig = Bitmap.Config.RGB_565;
+                    final Bitmap bmp = BitmapFactory.decodeStream(is2, null, decodeOpt);
+                    is2.close();
+
                     if (bmp != null) {
                         artworkCache.put(mediaId, bmp);
                         handler.post(new Runnable() {
@@ -759,7 +800,12 @@ public class AutoMediaBrowserService extends MediaBrowserService {
                             }
                         });
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                } finally {
+                    if (conn != null) {
+                        try { conn.disconnect(); } catch (Exception ignored) {}
+                    }
+                }
             }
         });
     }

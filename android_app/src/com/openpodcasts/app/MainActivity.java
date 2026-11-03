@@ -33,6 +33,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.HttpURLConnection;
@@ -49,7 +50,9 @@ public class MainActivity extends Activity {
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable progressRunnable;
     private String currentAudioUrl = "";
-    private ExecutorService networkExecutor = Executors.newFixedThreadPool(4);
+    private ExecutorService networkExecutor = Executors.newFixedThreadPool(3);
+    private BroadcastReceiver evalReceiver;
+    private BroadcastReceiver autoSyncReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,7 +95,7 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
-        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         webView.addJavascriptInterface(new PodcastNativeBridge(), "AndroidBridge");
 
@@ -119,12 +122,14 @@ public class MainActivity extends Activity {
 
         initMediaPlayer();
 
-        BroadcastReceiver evalReceiver = new BroadcastReceiver() {
+        evalReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String js = intent.getStringExtra("js");
-                if (js != null) {
-                    runOnUiThread(() -> webView.evaluateJavascript(js, null));
+                if (js != null && webView != null) {
+                    runOnUiThread(() -> {
+                        if (webView != null) webView.evaluateJavascript(js, null);
+                    });
                 }
             }
         };
@@ -134,14 +139,16 @@ public class MainActivity extends Activity {
             registerReceiver(evalReceiver, new IntentFilter("com.openpodcasts.app.EVAL_JS"));
         }
 
-        BroadcastReceiver autoSyncReceiver = new BroadcastReceiver() {
+        autoSyncReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent != null && AutoMediaBrowserService.ACTION_SYNC_TO_UI.equals(intent.getAction())) {
                     String epId = intent.getStringExtra("epId");
                     boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onAutoPlaybackSync) window.onAutoPlaybackSync('" + epId + "'," + isPlaying + ");", null);
+                        if (webView != null) {
+                            webView.evaluateJavascript("if(window.onAutoPlaybackSync) window.onAutoPlaybackSync('" + epId + "'," + isPlaying + ");", null);
+                        }
                     });
                 }
             }
@@ -302,6 +309,24 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String getCatalogJson() {
+            try {
+                InputStream is = getAssets().open("real_podcasts.json");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                reader.close();
+                return sb.toString();
+            } catch (Exception e) {
+                Log.e("OpenPodcastsApp", "getCatalogJson error: " + e.getMessage());
+                return "[]";
+            }
+        }
+
+        @JavascriptInterface
         public void syncToAuto(String epId, String title, String podcast, String artwork, long pos, long dur, boolean isPlaying) {
             Intent intent = new Intent(AutoMediaBrowserService.ACTION_SYNC_FROM_UI);
             intent.putExtra("epId", epId);
@@ -320,11 +345,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void searchInternet(String query, String callbackId) {
             networkExecutor.execute(() -> {
+                HttpURLConnection conn = null;
                 try {
                     String encoded = URLEncoder.encode(query, "UTF-8");
                     String searchUrl = "https://itunes.apple.com/search?term=" + encoded + "&media=podcast&limit=12";
                     URL url = new URL(searchUrl);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
                     conn.setConnectTimeout(8000);
@@ -364,14 +390,18 @@ public class MainActivity extends Activity {
 
                     String jsonResult = JSONObject.quote(outList.toString());
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onSearchResults) window.onSearchResults(" + jsonResult + ", '" + callbackId + "');", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onSearchResults) window.onSearchResults(" + jsonResult + ", '" + callbackId + "');", null);
                     });
 
                 } catch (Exception e) {
                     Log.e("OpenPodcastsApp", "searchInternet error: " + e.getMessage());
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onSearchResults) window.onSearchResults('[]', '" + callbackId + "');", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onSearchResults) window.onSearchResults('[]', '" + callbackId + "');", null);
                     });
+                } finally {
+                    if (conn != null) {
+                        try { conn.disconnect(); } catch (Exception ignored) {}
+                    }
                 }
             });
         }
@@ -392,117 +422,131 @@ public class MainActivity extends Activity {
 
                     // If collectionId is still not found, search directory by podcast title
                     if (targetId == null || targetId.isEmpty() || "0".equals(targetId)) {
-                        String encodedTitle = URLEncoder.encode(podcastTitle, "UTF-8");
-                        String searchUrl = "https://itunes.apple.com/search?term=" + encodedTitle + "&media=podcast&limit=1";
-                        URL url = new URL(searchUrl);
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("GET");
-                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(8000);
+                        HttpURLConnection searchConn = null;
+                        try {
+                            String encodedTitle = URLEncoder.encode(podcastTitle, "UTF-8");
+                            String searchUrl = "https://itunes.apple.com/search?term=" + encodedTitle + "&media=podcast&limit=1";
+                            URL url = new URL(searchUrl);
+                            searchConn = (HttpURLConnection) url.openConnection();
+                            searchConn.setRequestMethod("GET");
+                            searchConn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                            searchConn.setConnectTimeout(6000);
+                            searchConn.setReadTimeout(6000);
 
-                        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                        StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = in.readLine()) != null) {
-                            sb.append(line);
-                        }
-                        in.close();
+                            BufferedReader in = new BufferedReader(new InputStreamReader(searchConn.getInputStream()));
+                            StringBuilder sb = new StringBuilder();
+                            String line;
+                            while ((line = in.readLine()) != null) {
+                                sb.append(line);
+                            }
+                            in.close();
 
-                        JSONObject json = new JSONObject(sb.toString());
-                        JSONArray results = json.optJSONArray("results");
-                        if (results != null && results.length() > 0) {
-                            targetId = String.valueOf(results.getJSONObject(0).optLong("collectionId", 0));
+                            JSONObject json = new JSONObject(sb.toString());
+                            JSONArray results = json.optJSONArray("results");
+                            if (results != null && results.length() > 0) {
+                                targetId = String.valueOf(results.getJSONObject(0).optLong("collectionId", 0));
+                            }
+                        } finally {
+                            if (searchConn != null) {
+                                try { searchConn.disconnect(); } catch (Exception ignored) {}
+                            }
                         }
                     }
 
                     JSONArray outReviews = new JSONArray();
 
                     if (targetId != null && !targetId.isEmpty() && !"0".equals(targetId)) {
-                        String revUrl = "https://itunes.apple.com/us/rss/customerreviews/id=" + targetId + "/sortBy=mostRecent/json";
-                        URL url = new URL(revUrl);
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("GET");
-                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
-                        conn.setConnectTimeout(9000);
-                        conn.setReadTimeout(9000);
+                        HttpURLConnection revConn = null;
+                        try {
+                            String revUrl = "https://itunes.apple.com/us/rss/customerreviews/id=" + targetId + "/sortBy=mostRecent/json";
+                            URL url = new URL(revUrl);
+                            revConn = (HttpURLConnection) url.openConnection();
+                            revConn.setRequestMethod("GET");
+                            revConn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                            revConn.setConnectTimeout(7000);
+                            revConn.setReadTimeout(7000);
 
-                        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                        StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = in.readLine()) != null) {
-                            sb.append(line);
-                        }
-                        in.close();
+                            BufferedReader in = new BufferedReader(new InputStreamReader(revConn.getInputStream()));
+                            StringBuilder sb = new StringBuilder();
+                            String line;
+                            while ((line = in.readLine()) != null) {
+                                sb.append(line);
+                            }
+                            in.close();
 
-                        JSONObject revJson = new JSONObject(sb.toString());
-                        JSONObject feed = revJson.optJSONObject("feed");
-                        if (feed != null) {
-                            JSONArray entries = feed.optJSONArray("entry");
-                            if (entries != null) {
-                                for (int i = 0; i < entries.length() && i < 40; i++) {
-                                    JSONObject entry = entries.getJSONObject(i);
-                                    String author = "Verified Listener";
-                                    JSONObject authorObj = entry.optJSONObject("author");
-                                    if (authorObj != null && authorObj.has("name")) {
-                                        author = authorObj.optJSONObject("name").optString("label", "Listener");
-                                    }
+                            JSONObject revJson = new JSONObject(sb.toString());
+                            JSONObject feed = revJson.optJSONObject("feed");
+                            if (feed != null) {
+                                JSONArray entries = feed.optJSONArray("entry");
+                                if (entries != null) {
+                                    for (int i = 0; i < entries.length() && i < 40; i++) {
+                                        JSONObject entry = entries.getJSONObject(i);
+                                        String author = "Verified Listener";
+                                        JSONObject authorObj = entry.optJSONObject("author");
+                                        if (authorObj != null && authorObj.has("name")) {
+                                            author = authorObj.optJSONObject("name").optString("label", "Listener");
+                                        }
 
-                                    int rating = 5;
-                                    JSONObject ratingObj = entry.optJSONObject("im:rating");
-                                    if (ratingObj != null) {
-                                        try {
-                                            rating = Integer.parseInt(ratingObj.optString("label", "5"));
-                                        } catch (Exception ignored) { rating = 5; }
-                                    }
+                                        int rating = 5;
+                                        JSONObject ratingObj = entry.optJSONObject("im:rating");
+                                        if (ratingObj != null) {
+                                            try {
+                                                rating = Integer.parseInt(ratingObj.optString("label", "5"));
+                                            } catch (Exception ignored) { rating = 5; }
+                                        }
 
-                                    String title = "";
-                                    JSONObject titleObj = entry.optJSONObject("title");
-                                    if (titleObj != null) {
-                                        title = titleObj.optString("label", "");
-                                    }
+                                        String title = "";
+                                        JSONObject titleObj = entry.optJSONObject("title");
+                                        if (titleObj != null) {
+                                            title = titleObj.optString("label", "");
+                                        }
 
-                                    String content = "";
-                                    JSONObject contentObj = entry.optJSONObject("content");
-                                    if (contentObj != null) {
-                                        content = contentObj.optString("label", "");
-                                    }
+                                        String content = "";
+                                        JSONObject contentObj = entry.optJSONObject("content");
+                                        if (contentObj != null) {
+                                            content = contentObj.optString("label", "");
+                                        }
 
-                                    String updated = "Recent";
-                                    JSONObject updatedObj = entry.optJSONObject("updated");
-                                    if (updatedObj != null) {
-                                        String raw = updatedObj.optString("label", "");
-                                        if (raw.length() >= 10) {
-                                            updated = raw.substring(0, 10);
+                                        String updated = "Recent";
+                                        JSONObject updatedObj = entry.optJSONObject("updated");
+                                        if (updatedObj != null) {
+                                            String raw = updatedObj.optString("label", "");
+                                            if (raw.length() >= 10) {
+                                                updated = raw.substring(0, 10);
+                                            }
+                                        }
+
+                                        if (!content.isEmpty()) {
+                                            JSONObject r = new JSONObject();
+                                            r.put("id", "real_" + targetId + "_" + i);
+                                            r.put("author", author);
+                                            r.put("rating", rating);
+                                            r.put("title", title);
+                                            r.put("comment", content);
+                                            r.put("date", updated);
+                                            r.put("isReal", true);
+                                            r.put("likes", (i % 5) * 7 + 4);
+                                            outReviews.put(r);
                                         }
                                     }
-
-                                    if (!content.isEmpty()) {
-                                        JSONObject r = new JSONObject();
-                                        r.put("id", "real_" + targetId + "_" + i);
-                                        r.put("author", author);
-                                        r.put("rating", rating);
-                                        r.put("title", title);
-                                        r.put("comment", content);
-                                        r.put("date", updated);
-                                        r.put("isReal", true);
-                                        r.put("likes", (i % 5) * 7 + 4);
-                                        outReviews.put(r);
-                                    }
                                 }
+                            }
+                        } finally {
+                            if (revConn != null) {
+                                try { revConn.disconnect(); } catch (Exception ignored) {}
                             }
                         }
                     }
 
                     String jsonOut = JSONObject.quote(outReviews.toString());
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onReviewsLoaded) window.onReviewsLoaded('" + podcastId + "', " + jsonOut + ");", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onReviewsLoaded) window.onReviewsLoaded('" + podcastId + "', " + jsonOut + ");", null);
                     });
 
                 } catch (Exception e) {
                     Log.e("OpenPodcastsApp", "fetchRealReviews error: " + e.getMessage());
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onReviewsLoaded) window.onReviewsLoaded('" + podcastId + "', '[]');", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onReviewsLoaded) window.onReviewsLoaded('" + podcastId + "', '[]');", null);
                     });
                 }
             });
@@ -514,27 +558,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void fetchLiveFeed(String feedUrl, String podcastId) {
             networkExecutor.execute(() -> {
+                HttpURLConnection conn = null;
                 try {
                     URL url = new URL(feedUrl);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) OpenPodcasts/1.0");
-                    conn.setConnectTimeout(9000);
-                    conn.setReadTimeout(9000);
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
 
-                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = in.readLine()) != null) {
-                        sb.append(line).append("\n");
-                    }
-                    in.close();
-
-                    String xml = sb.toString();
+                    InputStream in = conn.getInputStream();
                     DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
                     dbFactory.setNamespaceAware(true);
                     DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-                    Document doc = dBuilder.parse(new InputSource(new StringReader(xml)));
+                    Document doc = dBuilder.parse(in);
+                    in.close();
                     doc.getDocumentElement().normalize();
 
                     NodeList items = doc.getElementsByTagName("item");
@@ -571,14 +609,18 @@ public class MainActivity extends Activity {
 
                     String jsonEps = JSONObject.quote(episodes.toString());
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onFeedLoaded) window.onFeedLoaded('" + podcastId + "', " + jsonEps + ");", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onFeedLoaded) window.onFeedLoaded('" + podcastId + "', " + jsonEps + ");", null);
                     });
 
                 } catch (Exception e) {
                     Log.e("OpenPodcastsApp", "fetchLiveFeed error: " + e.getMessage());
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onFeedLoaded) window.onFeedLoaded('" + podcastId + "', '[]');", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onFeedLoaded) window.onFeedLoaded('" + podcastId + "', '[]');", null);
                     });
+                } finally {
+                    if (conn != null) {
+                        try { conn.disconnect(); } catch (Exception ignored) {}
+                    }
                 }
             });
         }
@@ -589,27 +631,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void parseAndSubscribeRss(String rssUrl) {
             networkExecutor.execute(() -> {
+                HttpURLConnection conn = null;
                 try {
                     URL url = new URL(rssUrl);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.2");
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(10000);
+                    conn.setConnectTimeout(9000);
+                    conn.setReadTimeout(9000);
 
-                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = in.readLine()) != null) {
-                        sb.append(line).append("\n");
-                    }
-                    in.close();
-
-                    String xml = sb.toString();
+                    InputStream in = conn.getInputStream();
                     DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
                     dbFactory.setNamespaceAware(true);
                     DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-                    Document doc = dBuilder.parse(new InputSource(new StringReader(xml)));
+                    Document doc = dBuilder.parse(in);
+                    in.close();
                     doc.getDocumentElement().normalize();
 
                     NodeList channels = doc.getElementsByTagName("channel");
@@ -678,15 +714,19 @@ public class MainActivity extends Activity {
 
                     String jsonShow = JSONObject.quote(showObj.toString());
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onCustomFeedSubscribed) window.onCustomFeedSubscribed(" + jsonShow + ");", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onCustomFeedSubscribed) window.onCustomFeedSubscribed(" + jsonShow + ");", null);
                     });
 
                 } catch (Exception e) {
                     Log.e("OpenPodcastsApp", "parseAndSubscribeRss error: " + e.getMessage());
                     String errQuote = JSONObject.quote(e.getMessage() != null ? e.getMessage() : "Failed to load feed");
                     runOnUiThread(() -> {
-                        webView.evaluateJavascript("if(window.onCustomFeedSubscribed) window.onCustomFeedSubscribed(null, " + errQuote + ");", null);
+                        if (webView != null) webView.evaluateJavascript("if(window.onCustomFeedSubscribed) window.onCustomFeedSubscribed(null, " + errQuote + ");", null);
                     });
+                } finally {
+                    if (conn != null) {
+                        try { conn.disconnect(); } catch (Exception ignored) {}
+                    }
                 }
             });
         }
@@ -702,13 +742,33 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
         stopProgressUpdates();
+        if (evalReceiver != null) {
+            try { unregisterReceiver(evalReceiver); } catch (Exception ignored) {}
+            evalReceiver = null;
+        }
+        if (autoSyncReceiver != null) {
+            try { unregisterReceiver(autoSyncReceiver); } catch (Exception ignored) {}
+            autoSyncReceiver = null;
+        }
         if (mediaPlayer != null) {
-            mediaPlayer.release();
+            try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
         }
-        networkExecutor.shutdown();
+        if (networkExecutor != null) {
+            try { networkExecutor.shutdownNow(); } catch (Exception ignored) {}
+        }
+        if (webView != null) {
+            if (webView.getParent() instanceof android.view.ViewGroup) {
+                ((android.view.ViewGroup) webView.getParent()).removeView(webView);
+            }
+            webView.stopLoading();
+            webView.clearHistory();
+            webView.removeAllViews();
+            webView.destroy();
+            webView = null;
+        }
+        super.onDestroy();
     }
 
     @Override

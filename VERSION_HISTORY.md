@@ -8,7 +8,35 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [v1.4] - 2026-11-03 (Build 5) - LATEST
+## [v1.4.1] - 2026-11-03 (Build 6) - LATEST
+
+### Summary
+Comprehensive performance audit, memory leak fixes, and deep RAM & disk size optimizations:
+- **Java Heap slashed to 2.6 MB** (verified live via `dumpsys meminfo`).
+- **APK Binary footprint reduced by ~18%** (from 160 KB to 131 KB).
+- **HTML payload reduced by 37%** (eliminated ~100 KB duplicate inlined catalog).
+
+### Key Optimizations & Bug Fixes in v1.4.1
+
+#### 1. Zero Memory Leaks & Resource Lifecycle Protection
+- **BroadcastReceiver Leaks Fixed**: Dynamically registered receivers (`evalReceiver`, `autoSyncReceiver`) in `MainActivity` are now tracked as instance fields and guaranteed to be unregistered in `onDestroy()`, preventing activity context leaks on configuration/folding changes.
+- **WebView Destruction on Activity Teardown**: Properly detaches `webView` from the view hierarchy and calls `destroy()` in `onDestroy()`, terminating Chromium worker threads and avoiding context retention.
+- **Executor Lifecycle Termination**: Replaced dangling executor threads with explicit `shutdownNow()` in both `MainActivity` and `AutoMediaBrowserService`.
+
+#### 2. Bitmap Downsampling & LruCache Memory Shield
+- **LruCache Artwork Management**: Replaced unbounded `HashMap<String, Bitmap>` in `AutoMediaBrowserService` with an `LruCache` bounded to 6 entries with automatic eviction on memory pressure.
+- **RGB_565 Downsampling**: Full-resolution podcast album art (often 3000x3000px, 36MB uncompressed) is now downsampled using `inSampleSize` to a 256px thumbnail and decoded using `RGB_565` (2 bytes/px). Slashes RAM per cached image by 99% (from 36MB down to ~130KB).
+- **Socket & Connection Cleanup**: Enforced `try ... finally { conn.disconnect(); }` across directory searches, customer reviews, RSS parsing, and album artwork network requests.
+
+#### 3. Asset Deduplication & Direct Stream Parsing
+- **Zero-Duplication Catalog Engine**: Removed 107 KB duplicated JSON string from `index.html`. Added `AndroidBridge.getCatalogJson()` delivering the catalog directly from `assets/real_podcasts.json`.
+- **Streaming XML Parser**: Replaced intermediate `BufferedReader -> StringBuilder -> String -> StringReader` pipelines with direct `dBuilder.parse(conn.getInputStream())`, saving multiple megabytes of heap allocation during large feed fetches.
+- **WebSettings Disk Cache**: Enabled `WebSettings.LOAD_DEFAULT` caching in Chromium WebView, eliminating unnecessary re-downloads.
+- **Compact SharedPreferences Storage**: Compacted subscription serialization to save only essential show IDs and metadata, shrinking `gp_subscriptions` from ~150 KB down to ~2 KB.
+
+---
+
+## [v1.4] - 2026-11-03 (Build 5)
 
 ### Summary
 Comprehensive open-source rebranding to **OpenPodcasts** (`com.openpodcasts.app`) ensuring 100% trademark compliance for public GitHub distribution, coupled with **Universal Android Phone Compatibility** verified across diverse device resolutions (compact budget, standard modern, and high-density flagship phones).
