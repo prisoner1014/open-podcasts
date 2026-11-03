@@ -339,6 +339,39 @@ public class MainActivity extends Activity {
             sendBroadcast(intent);
         }
 
+        @JavascriptInterface
+        public void shareEpisode(String title, String podcastTitle, String audioUrl, String feedUrl) {
+            runOnUiThread(() -> {
+                try {
+                    Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                    shareIntent.setType("text/plain");
+                    
+                    StringBuilder shareBody = new StringBuilder();
+                    shareBody.append("Listening to \"").append(title).append("\"");
+                    if (podcastTitle != null && !podcastTitle.isEmpty()) {
+                        shareBody.append(" on ").append(podcastTitle);
+                    }
+                    shareBody.append("\n\n");
+                    if (audioUrl != null && !audioUrl.isEmpty()) {
+                        shareBody.append("Listen: ").append(audioUrl).append("\n");
+                    }
+                    if (feedUrl != null && !feedUrl.isEmpty()) {
+                        shareBody.append("Podcast Feed: ").append(feedUrl).append("\n");
+                    }
+                    shareBody.append("\nShared via OpenPodcasts");
+
+                    shareIntent.putExtra(Intent.EXTRA_SUBJECT, title);
+                    shareIntent.putExtra(Intent.EXTRA_TEXT, shareBody.toString());
+
+                    Intent chooser = Intent.createChooser(shareIntent, "Share Episode");
+                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(chooser);
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "shareEpisode error: " + e.getMessage());
+                }
+            });
+        }
+
         /**
          * Search Podcasts across the internet using the iTunes Podcast Directory API
          */

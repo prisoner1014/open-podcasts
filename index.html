@@ -4372,7 +4372,33 @@
           this.audio.seekToPercent(e.target.value);
         };
         this.safeEl('sheetShareBtn').onclick = () => {
-          this.showToast(`Shared "${this.currentEpisode.title}"`);
+          if (!this.currentEpisode) return;
+          const ep = this.currentEpisode;
+          const showTitle = (this.currentShow && this.currentShow.title) || 'Podcast';
+          const feedUrl = (this.currentShow && this.currentShow.feedUrl) || '';
+          const audioUrl = ep.audioUrl || '';
+
+          if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.shareEpisode) {
+            window.AndroidBridge.shareEpisode(ep.title, showTitle, audioUrl, feedUrl);
+          } else if (navigator.share) {
+            navigator.share({
+              title: ep.title,
+              text: `Listening to "${ep.title}" on ${showTitle}\nShared via OpenPodcasts`,
+              url: audioUrl || feedUrl || window.location.href
+            }).catch(() => {});
+          } else {
+            // Clipboard fallback
+            const shareText = `"${ep.title}" on ${showTitle}: ${audioUrl || feedUrl}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(shareText).then(() => {
+                this.showToast('Episode link copied to clipboard!');
+              }).catch(() => {
+                this.showToast(`Shared "${ep.title}"`);
+              });
+            } else {
+              this.showToast(`Shared "${ep.title}"`);
+            }
+          }
         };
 
         // Speed & Trim Silence Modal
