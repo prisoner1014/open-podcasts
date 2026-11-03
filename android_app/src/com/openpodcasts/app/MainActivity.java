@@ -98,7 +98,8 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        webView.clearCache(true);
 
         webView.addJavascriptInterface(new PodcastNativeBridge(), "AndroidBridge");
 

@@ -95,12 +95,17 @@ if os.path.exists(final_apk):
     os.remove(final_apk)
 run(f'"{APKSIGNER}" sign --ks "{KEYSTORE}" --ks-pass pass:android --out "{final_apk}" "{aligned_apk}"', "Signing APK")
 
-# Copy to artifacts
+# Copy to user directory and artifacts
 shutil.copy2(final_apk, os.path.join(ARTIFACT_DIR, "OpenPodcasts.apk"))
+try:
+    shutil.copy2(final_apk, r"C:\Users\teimo\OpenPodcasts.apk")
+except Exception:
+    pass
 print("[+] APK built successfully:", final_apk, f"({os.path.getsize(final_apk)} bytes)")
 
-# 10. Install on physical device
+# 10. Install on physical device (auto-reconnecting over Wi-Fi if needed)
 print("[*] Installing on Samsung device...")
+subprocess.run(f'"{ADB}" connect 192.168.1.236:5555', shell=True)
 install_res = run(f'"{ADB}" install -r -d "{final_apk}"', "Installing APK on phone")
 
 # 11. Launch app
