@@ -327,6 +327,32 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void setSystemTheme(boolean isDark) {
+            runOnUiThread(() -> {
+                try {
+                    Window window = getWindow();
+                    View decor = window.getDecorView();
+                    if (isDark) {
+                        decor.setSystemUiVisibility(0); // Clear light status/nav bar flags
+                        window.setStatusBarColor(Color.parseColor("#121212"));
+                        window.setNavigationBarColor(Color.parseColor("#121212"));
+                        if (webView != null) webView.setBackgroundColor(Color.parseColor("#121212"));
+                    } else {
+                        decor.setSystemUiVisibility(
+                            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
+                            View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                        );
+                        window.setStatusBarColor(Color.parseColor("#FFFFFF"));
+                        window.setNavigationBarColor(Color.parseColor("#FFFFFF"));
+                        if (webView != null) webView.setBackgroundColor(Color.parseColor("#FFFFFF"));
+                    }
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "setSystemTheme error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
         public void syncToAuto(String epId, String title, String podcast, String artwork, long pos, long dur, boolean isPlaying) {
             Intent intent = new Intent(AutoMediaBrowserService.ACTION_SYNC_FROM_UI);
             intent.putExtra("epId", epId);

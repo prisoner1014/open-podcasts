@@ -8,7 +8,19 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [v1.5.0] - 2026-11-03 (Build 8) - LATEST
+## [v1.6.0] - 2026-11-03 (Build 9) - LATEST
+
+### Summary
+Full-featured Dark Mode theme with OLED high-contrast palette, quick header toggle, persistent theme storage, and synchronized native Android system bars:
+- **Comprehensive OLED Dark Theme**: Implemented modern dark palette across all screens, player sheets, modals, cards, tabs, and action pills (`#121212` background, `#1e1e1e` surface, `#28292a` cards, `#8ab4f8` primary accents, `#e8eaed` text).
+- **1-Tap Quick Header Toggle**: Header button with sun/moon SVG icon switching for instant light/dark mode transitions anywhere in the app.
+- **Native Android System Bar Dynamic Color Matching**: Native `AndroidBridge.setSystemTheme(boolean)` dynamically updates status bar and navigation bar background colors (`#121212` vs `#FFFFFF`) and light/dark icon visibility flags.
+- **Dual-Layer Theme Persistence**: Saves preference in both Android `SharedPreferences` (`gp_dark_mode`) and browser `localStorage`, seamlessly maintaining your preferred theme across app restarts and reboots.
+- **System Preference Detection**: Automatically defaults to system dark theme if no explicit preference has been saved yet.
+
+---
+
+## [v1.5.0] - 2026-11-03 (Build 8)
 
 ### Summary
 Comprehensive Ad-Skipping suite: Per-podcast automated Intro & Outro skipping and 1-tap Smart "Skip Ad" (+60s) action button:
