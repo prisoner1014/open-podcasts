@@ -2020,7 +2020,7 @@
           <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
         </svg>
       </button>
-      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v1.8</button>
+      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v1.9</button>
       <button class="icon-button" id="headerSearchBtn" title="Search">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       </button>
@@ -2251,6 +2251,9 @@
           <h2 class="section-title" id="detailEpisodesSectionTitle">All episodes</h2>
           <span class="episodes-filter-summary" id="detailEpisodesFilterSummary"></span>
         </div>
+        <button class="icon-button" id="refreshFeedBtn" title="Refresh feed & load full episode history" style="width:34px; height:34px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
       </div>
       <div class="episodes-feed" id="detailEpisodesList"></div>
     </div>
@@ -2499,18 +2502,33 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <div>
           <div class="modal-title" style="margin-bottom:2px; font-size:18px;">Version History</div>
-          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v1.8 • Current Release</div>
+          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v1.9 • Current Release</div>
         </div>
         <button class="icon-button" id="closeVersionModalBtn" style="width:36px; height:36px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </div>
 
-      <!-- Release v1.8 (CURRENT - In-Podcast Search & Responsive Player Buttons) -->
+      <!-- Release v1.9 (CURRENT - Full Episode History & Live Feeds) -->
       <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:2px solid var(--primary);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.8</span>
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.9</span>
           <span style="background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;">LATEST</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 12</div>
+        <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
+          <li><strong>Full Episode History:</strong> Removed 10-episode restriction to support complete podcast archives and back catalogs (up to 500+ episodes).</li>
+          <li><strong>Deep Preloaded Catalog:</strong> Expanded preloaded catalog to 60 full episodes per show across all 12 featured podcasts.</li>
+          <li><strong>Automatic Live RSS Feed Sync:</strong> Automatically synchronizes the complete live archive in the background when opening any show.</li>
+          <li><strong>1-Tap Feed Refresh Button:</strong> Added refresh button in show detail header to instantly pull the latest episodes on demand.</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.8 (In-Podcast Search & Responsive Player Buttons) -->
+      <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:1px solid var(--divider-light); opacity:0.95;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.8</span>
+          <span style="background:var(--surface); color:var(--text-secondary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid var(--divider);">BUILD 11</span>
         </div>
         <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 11</div>
         <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
@@ -4480,18 +4498,28 @@
         const searchBar = this.safeEl('detailEpisodeSearchBar');
         if (searchBar) searchBar.classList.remove('is-visible');
 
-        // If this show was found via internet search and hasn't loaded its RSS feed yet
+        // Render episodes immediately so UI is responsive
         if (!show.episodes || show.episodes.length === 0) {
           if (show.feedUrl) {
-            epList.innerHTML = '<div class="feed-loading-notice">Loading latest episodes from RSS feed...</div>';
+            epList.innerHTML = '<div class="feed-loading-notice">Loading complete episode history...</div>';
             if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.fetchLiveFeed) {
               window.AndroidBridge.fetchLiveFeed(show.feedUrl, show.id);
+            } else {
+              this.fetchLiveFeedWeb(show.feedUrl, show.id);
             }
           } else {
             epList.innerHTML = '<div class="feed-loading-notice">No episodes found.</div>';
           }
         } else {
           this.renderShowEpisodes(show);
+          // If the show has a live RSS feed and hasn't loaded its full history yet, fetch in background
+          if (show.feedUrl && !show.fullHistoryLoaded) {
+            if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.fetchLiveFeed) {
+              window.AndroidBridge.fetchLiveFeed(show.feedUrl, show.id);
+            } else {
+              this.fetchLiveFeedWeb(show.feedUrl, show.id);
+            }
+          }
         }
 
         this.safeEl('showDetailView').classList.add('active');
@@ -4616,14 +4644,63 @@
       }
 
       handleFeedLoaded(podcastId, episodes) {
+        if (!episodes || episodes.length === 0) return;
+        const target = this.shows.find(s => s.id === podcastId);
+        if (target) {
+          target.episodes = episodes;
+          target.fullHistoryLoaded = true;
+          target.newCount = episodes.length;
+        }
         if (this.currentShow && this.currentShow.id === podcastId) {
           this.currentShow.episodes = episodes;
+          this.currentShow.fullHistoryLoaded = true;
+          this.currentShow.newCount = episodes.length;
           // Add to shows repository if new
           if (!this.shows.some(s => s.id === this.currentShow.id)) {
             this.shows.push(this.currentShow);
           }
           this.renderShowEpisodes(this.currentShow);
+          this.showToast(`Loaded full history (${episodes.length} episodes)`);
         }
+      }
+
+      fetchLiveFeedWeb(feedUrl, podcastId) {
+        if (!feedUrl) return;
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
+        fetch(proxyUrl)
+          .then(res => res.text())
+          .then(xmlStr => {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlStr, "text/xml");
+            const items = xmlDoc.querySelectorAll("item");
+            const eps = [];
+            items.forEach((itemEl, idx) => {
+              if (idx >= 500) return;
+              const epTitle = (itemEl.querySelector("title") && itemEl.querySelector("title").textContent) || `Episode ${idx+1}`;
+              const pubDate = (itemEl.querySelector("pubDate") && itemEl.querySelector("pubDate").textContent) || "Recent";
+              const enc = itemEl.querySelector("enclosure");
+              const audioUrl = enc ? enc.getAttribute("url") : "";
+              if (!audioUrl) return;
+              const itDur = itemEl.getElementsByTagName("itunes:duration")[0];
+              const duration = (itDur && itDur.textContent) || "35 min";
+              const itDesc = itemEl.querySelector("description");
+              let desc = (itDesc && itDesc.textContent) || "";
+              desc = desc.replace(/<[^>]*>/g, "").trim();
+              if (desc.length > 240) desc = desc.substring(0, 235) + "...";
+              eps.push({
+                id: `${podcastId}-ep-${idx+1}`,
+                title: epTitle,
+                date: pubDate,
+                duration: duration,
+                audioUrl: audioUrl,
+                desc: desc
+              });
+            });
+            if (eps.length > 0) {
+              this.handleFeedLoaded(podcastId, eps);
+            }
+          })
+          .catch(e => console.warn("Web feed fetch error:", e));
       }
 
       updateEpisodesSummary(visibleCount, totalCount) {
@@ -5274,6 +5351,22 @@
             this.openShowDetail(this.currentShow);
           }
         };
+
+        const refreshFeedBtn = this.safeEl('refreshFeedBtn');
+        if (refreshFeedBtn) {
+          refreshFeedBtn.onclick = () => {
+            if (this.currentShow && this.currentShow.feedUrl) {
+              this.showToast('Refreshing live episode feed...');
+              if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.fetchLiveFeed) {
+                window.AndroidBridge.fetchLiveFeed(this.currentShow.feedUrl, this.currentShow.id);
+              } else {
+                this.fetchLiveFeedWeb(this.currentShow.feedUrl, this.currentShow.id);
+              }
+            } else {
+              this.showToast('No live RSS feed URL available for this show');
+            }
+          };
+        }
 
         const toggleEpSearchBtn = this.safeEl('toggleEpisodeSearchBtn');
         if (toggleEpSearchBtn) {

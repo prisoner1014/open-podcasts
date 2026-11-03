@@ -8,7 +8,19 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [v1.8.0] - 2026-11-03 (Build 11) - LATEST
+## [v1.9.0] - 2026-11-03 (Build 12) - LATEST
+
+### Summary
+Full Episode History & Live RSS Feed Synchronization:
+- **Full Episode History (Up to 500+ Episodes)**: Removed the previous 10–20 episode limits in feed parsing and local catalogs, enabling users to explore complete podcast back catalogs, archives, and past seasons.
+- **Deep 60-Episode Bundled Database**: Re-indexed all 12 bundled starter podcasts in `real_podcasts.json` to feature 60 full episodes each with real audio enclosures, publication dates, and descriptions.
+- **Background Live RSS Feed Synchronization**: Opening any podcast with a live feed URL automatically synchronizes the full live episode list in the background without blocking the UI.
+- **1-Tap Live Feed Refresh Button**: Added a dedicated refresh feed button in the show detail episodes header to instantly poll live RSS feeds on demand.
+- **Web Feed Proxy Fallback**: Integrated live XML parser and proxy fallback for browser testing when native Android bridge is not present.
+
+---
+
+## [v1.8.0] - 2026-11-03 (Build 11)
 
 ### Summary
 In-Podcast Episode Search & Responsive Now Playing Player Controls:

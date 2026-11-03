@@ -667,7 +667,7 @@ public class MainActivity extends Activity {
                     NodeList items = doc.getElementsByTagName("item");
                     JSONArray episodes = new JSONArray();
 
-                    for (int i = 0; i < items.getLength() && i < 20; i++) {
+                    for (int i = 0; i < items.getLength() && i < 500; i++) {
                         Element itemEl = (Element) items.item(i);
                         String epTitle = getElementText(itemEl, "title", "Episode " + (i + 1));
                         String pubDate = getElementText(itemEl, "pubDate", "Recent");
@@ -682,9 +682,20 @@ public class MainActivity extends Activity {
 
                         if (audioUrl.isEmpty()) continue;
 
-                        String duration = getElementText(itemEl, "duration", "30 min");
+                        String duration = getElementText(itemEl, "itunes:duration", "");
+                        if (duration.isEmpty()) duration = getElementText(itemEl, "duration", "35 min");
+                        if (duration.contains(":")) {
+                            String[] dp = duration.split(":");
+                            if (dp.length == 2) {
+                                duration = dp[0] + "m";
+                            } else if (dp.length == 3) {
+                                duration = dp[0] + "h " + dp[1] + "m";
+                            }
+                        }
+
                         String desc = getElementText(itemEl, "description", "");
-                        if (desc.length() > 220) desc = desc.substring(0, 215) + "...";
+                        desc = desc.replaceAll("<[^>]*>", "").trim();
+                        if (desc.length() > 240) desc = desc.substring(0, 235) + "...";
 
                         JSONObject ep = new JSONObject();
                         ep.put("id", podcastId + "-ep-" + (i + 1));
@@ -771,7 +782,7 @@ public class MainActivity extends Activity {
 
                     JSONArray episodes = new JSONArray();
                     NodeList items = doc.getElementsByTagName("item");
-                    for (int i = 0; i < items.getLength() && i < 30; i++) {
+                    for (int i = 0; i < items.getLength() && i < 500; i++) {
                         Element itemEl = (Element) items.item(i);
                         String epTitle = getElementText(itemEl, "title", "Episode " + (i + 1));
                         String pubDate = getElementText(itemEl, "pubDate", "Recent");
