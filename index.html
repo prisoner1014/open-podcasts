@@ -2603,6 +2603,7 @@
         this.wavePhase = 0;
         this.searchDebounce = null;
         this.lastQueryId = 0;
+        this.currentSearchResults = null;
 
         // Load Persistent Queue, Downloads, and History
         this.loadStorage();
@@ -3426,8 +3427,27 @@
         if (!grid) return;
         grid.innerHTML = '';
 
-        let list = podcastsList || this.shows;
-        if (!podcastsList && this.activeCategory !== 'all') {
+        const searchInput = this.safeEl('exploreSearchInput');
+        const hasSearch = searchInput && searchInput.value.trim().length > 0;
+
+        let list = podcastsList;
+        if (!list) {
+          if (hasSearch && this.currentSearchResults && this.currentSearchResults.length > 0) {
+            list = this.currentSearchResults;
+          } else {
+            list = this.shows;
+          }
+        }
+
+        // Always sync subscribed state with this.shows
+        list.forEach(item => {
+          const matched = this.shows.find(s => (s.id === item.id) || (s.feedUrl && s.feedUrl === item.feedUrl));
+          if (matched) {
+            item.subscribed = !!matched.subscribed;
+          }
+        });
+
+        if (!podcastsList && (!hasSearch || !this.currentSearchResults) && this.activeCategory !== 'all') {
           list = list.filter(s => s.category && s.category.toLowerCase().includes(this.activeCategory));
         }
 
@@ -3452,7 +3472,7 @@
           const subBtn = card.querySelector('.show-card-subscribe-btn');
           subBtn.onclick = (e) => {
             e.stopPropagation();
-            this.toggleSubscribe(show);
+            this.toggleSubscribe(show, subBtn);
           };
 
           grid.appendChild(card);
@@ -3462,6 +3482,7 @@
       /* LIVE INTERNET SEARCH VIA NATIVE ANDROID BRIDGE */
       triggerInternetSearch(query) {
         if (!query) {
+          this.currentSearchResults = null;
           this.safeEl('searchSpinner').style.display = 'none';
           this.safeEl('exploreSectionTitle').textContent = 'Discover podcasts';
           this.renderExplore();
@@ -3504,7 +3525,7 @@
 
         // Merge with existing subscribed state
         results.forEach(r => {
-          const existing = this.shows.find(s => s.feedUrl && s.feedUrl === r.feedUrl);
+          const existing = this.shows.find(s => (s.id === r.id) || (s.feedUrl && s.feedUrl === r.feedUrl));
           if (existing) {
             r.subscribed = existing.subscribed;
             r.episodes = existing.episodes;
@@ -3512,6 +3533,7 @@
           }
         });
 
+        this.currentSearchResults = results;
         this.renderExplore(results);
       }
 
@@ -3921,14 +3943,54 @@
         this.closeShowDetail();
       }
 
-      toggleSubscribe(show) {
+      toggleSubscribe(show, btnEl = null) {
         show.subscribed = !show.subscribed;
-        if (show.subscribed && !this.shows.some(s => s.id === show.id)) {
-          this.shows.push(show);
+        const existingIdx = this.shows.findIndex(s => s.id === show.id || (s.feedUrl && s.feedUrl === show.feedUrl));
+        if (show.subscribed) {
+          if (existingIdx === -1) {
+            this.shows.push(show);
+          } else {
+            this.shows[existingIdx].subscribed = true;
+          }
+        } else {
+          if (existingIdx !== -1) {
+            this.shows[existingIdx].subscribed = false;
+          }
         }
+
+        // Keep active search results list in sync so multiple shows can be subscribed
+        if (this.currentSearchResults) {
+          this.currentSearchResults.forEach(r => {
+            if (r.id === show.id || (r.feedUrl && r.feedUrl === show.feedUrl)) {
+              r.subscribed = show.subscribed;
+            }
+          });
+        }
+
         this.saveSubscriptions();
         this.showToast(show.subscribed ? `Subscribed to ${show.title}` : `Unsubscribed from ${show.title}`);
-        this.renderAll();
+
+        // If a specific button was clicked, update it in-place smoothly
+        if (btnEl) {
+          btnEl.className = 'show-card-subscribe-btn ' + (show.subscribed ? 'subscribed' : '');
+          btnEl.textContent = show.subscribed ? 'Subscribed' : '+ Subscribe';
+        }
+
+        // Keep show detail banner subscribe button synced
+        const detailSubBtn = this.safeEl('detailSubBtn');
+        if (detailSubBtn && this.currentShow && (this.currentShow.id === show.id || this.currentShow.feedUrl === show.feedUrl)) {
+          detailSubBtn.textContent = show.subscribed ? 'Subscribed' : '+ Subscribe';
+          detailSubBtn.className = 'show-banner-sub-btn ' + (show.subscribed ? 'subscribed' : '');
+        }
+
+        // Update home row and manage subscriptions grid in background
+        this.renderHomeGrid();
+        this.renderActivity();
+
+        // If not triggered directly from an explore card button, refresh explore with current search or catalog
+        if (!btnEl) {
+          this.renderExplore();
+        }
       }
 
       addToQueue(ep) {
@@ -4079,6 +4141,7 @@
         this.safeEl('clearSearchBtn').onclick = () => {
           this.safeEl('exploreSearchInput').value = '';
           this.safeEl('clearSearchBtn').style.display = 'none';
+          this.currentSearchResults = null;
           this.triggerInternetSearch('');
         };
 

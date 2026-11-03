@@ -8,7 +8,17 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [v1.4.1] - 2026-11-03 (Build 6) - LATEST
+## [v1.4.2] - 2026-11-03 (Build 7) - LATEST
+
+### Summary
+Multi-podcast subscription support from active search results:
+- **Search Results Retention**: Searching for podcasts now preserves the active search results list across multiple subscribe/unsubscribe actions.
+- **In-Place Multi-Subscribe**: Users can now subscribe to two or more podcasts in a single search session without the search list being wiped or reset.
+- **Instant Visual State Feedback**: Card buttons toggle immediately between `+ Subscribe` and `Subscribed` while keeping the scroll position and search query active.
+
+---
+
+## [v1.4.1] - 2026-11-03 (Build 6)
 
 ### Summary
 Comprehensive performance audit, memory leak fixes, and deep RAM & disk size optimizations:
