@@ -1,0 +1,49 @@
+# Android & Build Artifacts
+android_app/build/
+*.keystore
+*.apk
+*.idsig
+*.dex
+*.class
+
+# Logs & Temporary files
+*.log
+*.tmp
+*.xml.dump
+*.xml
+!android_app/**/*.xml
+*dump*
+
+# Python cache & scratch scripts
+__pycache__/
+*.pyc
+test_*.py
+verify_*.py
+patch_*.py
+capture_*.py
+check_*.py
+inspect_*.py
+update_*.py
+refactor_*.py
+dump_reader.py
+fix_class_structure.py
+generate_html.py
+apply_updates.py
+fetch_real_podcasts.py
+robust_server.py
+serve_forever.py
+
+# Scripts & binaries
+bin/
+*.ps1
+!build_and_deploy.ps1
+
+# Local images & screenshots
+*.png
+!android_app/res/**/*.png
+!android_app/assets/**/*.png
+
+# System generated
+.system_generated/
+.agents/
+.gemini/

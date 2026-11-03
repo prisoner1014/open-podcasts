@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.openpodcasts.app"
+    android:versionCode="5"
+    android:versionName="1.4">
+
+    <uses-sdk
+        android:minSdkVersion="24"
+        android:targetSdkVersion="34" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/AppTheme"
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true">
+
+        <!-- Android Auto Automotive Application Metadata -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="com.google.android.gms.car.notification.SmallIcon"
+            android:resource="@mipmap/ic_launcher" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Android Auto & System MediaBrowserService -->
+        <service
+            android:name=".AutoMediaBrowserService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

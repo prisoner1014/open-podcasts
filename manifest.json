@@ -1,0 +1,26 @@
+{
+  "name": "OpenPodcasts",
+  "short_name": "OpenPodcasts",
+  "description": "OpenPodcasts Player v1.4 with Universal Android Phone & Android Auto Support, Live Search, Downloads & History",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1a73e8",
+  "categories": ["news", "entertainment", "music"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

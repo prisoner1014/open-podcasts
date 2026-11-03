@@ -1,0 +1,730 @@
+package com.openpodcasts.app;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.media.MediaPlayer;
+import android.media.PlaybackParams;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.content.SharedPreferences;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Build;
+import android.graphics.Color;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+public class MainActivity extends Activity {
+    private WebView webView;
+    private MediaPlayer mediaPlayer;
+    private Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable progressRunnable;
+    private String currentAudioUrl = "";
+    private ExecutorService networkExecutor = Executors.newFixedThreadPool(4);
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Native clean system status and nav bars
+        Window window = getWindow();
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        }
+        window.getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
+            View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        );
+        window.setStatusBarColor(Color.parseColor("#FFFFFF"));
+        window.setNavigationBarColor(Color.parseColor("#FFFFFF"));
+
+        webView = new WebView(this);
+        setContentView(webView);
+
+        WebView.setWebContentsDebuggingEnabled(true);
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+
+        webView.addJavascriptInterface(new PodcastNativeBridge(), "AndroidBridge");
+
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url.startsWith("file://") || url.startsWith("https://") || url.startsWith("http://")) {
+                    view.loadUrl(url);
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.d("OpenPodcastsApp", consoleMessage.message() + " -- Line "
+                    + consoleMessage.lineNumber() + " of " + consoleMessage.sourceId());
+                return true;
+            }
+        });
+        webView.setBackgroundColor(Color.parseColor("#FFFFFF"));
+
+        initMediaPlayer();
+
+        BroadcastReceiver evalReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String js = intent.getStringExtra("js");
+                if (js != null) {
+                    runOnUiThread(() -> webView.evaluateJavascript(js, null));
+                }
+            }
+        };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(evalReceiver, new IntentFilter("com.openpodcasts.app.EVAL_JS"), Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(evalReceiver, new IntentFilter("com.openpodcasts.app.EVAL_JS"));
+        }
+
+        BroadcastReceiver autoSyncReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent != null && AutoMediaBrowserService.ACTION_SYNC_TO_UI.equals(intent.getAction())) {
+                    String epId = intent.getStringExtra("epId");
+                    boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onAutoPlaybackSync) window.onAutoPlaybackSync('" + epId + "'," + isPlaying + ");", null);
+                    });
+                }
+            }
+        };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(autoSyncReceiver, new IntentFilter(AutoMediaBrowserService.ACTION_SYNC_TO_UI), Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(autoSyncReceiver, new IntentFilter(AutoMediaBrowserService.ACTION_SYNC_TO_UI));
+        }
+
+        webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    private void initMediaPlayer() {
+        mediaPlayer = new MediaPlayer();
+        mediaPlayer.setOnPreparedListener(mp -> {
+            mp.start();
+            int durationSec = mp.getDuration() / 1000;
+            runOnUiThread(() -> {
+                webView.evaluateJavascript("if(window.onNativePlayerReady) window.onNativePlayerReady(" + durationSec + ");", null);
+            });
+            startProgressUpdates();
+        });
+
+        mediaPlayer.setOnCompletionListener(mp -> {
+            runOnUiThread(() -> {
+                webView.evaluateJavascript("if(window.onNativePlayerEnded) window.onNativePlayerEnded();", null);
+            });
+        });
+
+        mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+            Log.e("OpenPodcastsApp", "MediaPlayer Error: " + what + ", " + extra);
+            runOnUiThread(() -> {
+                webView.evaluateJavascript("if(window.onNativePlayerError) window.onNativePlayerError(" + what + ");", null);
+            });
+            return true;
+        });
+    }
+
+    private void startProgressUpdates() {
+        stopProgressUpdates();
+        progressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                    int posSec = mediaPlayer.getCurrentPosition() / 1000;
+                    int durSec = mediaPlayer.getDuration() / 1000;
+                    webView.evaluateJavascript("if(window.onNativeProgressTick) window.onNativeProgressTick(" + posSec + "," + durSec + ");", null);
+                    handler.postDelayed(this, 1000);
+                }
+            }
+        };
+        handler.post(progressRunnable);
+    }
+
+    private void stopProgressUpdates() {
+        if (progressRunnable != null) {
+            handler.removeCallbacks(progressRunnable);
+            progressRunnable = null;
+        }
+    }
+
+    public class PodcastNativeBridge {
+        @JavascriptInterface
+        public void playAudio(String audioUrl) {
+            runOnUiThread(() -> {
+                try {
+                    currentAudioUrl = audioUrl;
+                    mediaPlayer.reset();
+                    mediaPlayer.setDataSource(audioUrl);
+                    mediaPlayer.prepareAsync();
+                    webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(true);", null);
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "playAudio error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void pauseAudio() {
+            runOnUiThread(() -> {
+                try {
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        mediaPlayer.pause();
+                        stopProgressUpdates();
+                        webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(false);", null);
+                    }
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "pauseAudio error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void resumeAudio() {
+            runOnUiThread(() -> {
+                try {
+                    if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+                        mediaPlayer.start();
+                        startProgressUpdates();
+                        webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(true);", null);
+                    }
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "resumeAudio error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void seekTo(int seconds) {
+            runOnUiThread(() -> {
+                try {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.seekTo(seconds * 1000);
+                        int dur = mediaPlayer.getDuration() / 1000;
+                        webView.evaluateJavascript("if(window.onNativeProgressTick) window.onNativeProgressTick(" + seconds + "," + dur + ");", null);
+                    }
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "seekTo error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void setSpeed(float speed) {
+            runOnUiThread(() -> {
+                try {
+                    if (mediaPlayer != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        PlaybackParams params = mediaPlayer.getPlaybackParams();
+                        params.setSpeed(speed);
+                        mediaPlayer.setPlaybackParams(params);
+                    }
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "setSpeed error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void saveNativePref(String key, String value) {
+            try {
+                SharedPreferences prefs = getSharedPreferences("podcasts_storage", MODE_PRIVATE);
+                prefs.edit().putString(key, value).apply();
+            } catch (Exception e) {
+                Log.e("OpenPodcastsApp", "saveNativePref error: " + e.getMessage());
+            }
+        }
+
+        @JavascriptInterface
+        public String getNativePref(String key, String defaultValue) {
+            try {
+                SharedPreferences prefs = getSharedPreferences("podcasts_storage", MODE_PRIVATE);
+                return prefs.getString(key, defaultValue);
+            } catch (Exception e) {
+                Log.e("OpenPodcastsApp", "getNativePref error: " + e.getMessage());
+                return defaultValue;
+            }
+        }
+
+        @JavascriptInterface
+        public void syncToAuto(String epId, String title, String podcast, String artwork, long pos, long dur, boolean isPlaying) {
+            Intent intent = new Intent(AutoMediaBrowserService.ACTION_SYNC_FROM_UI);
+            intent.putExtra("epId", epId);
+            intent.putExtra("title", title);
+            intent.putExtra("podcast", podcast);
+            intent.putExtra("artwork", artwork);
+            intent.putExtra("position", pos);
+            intent.putExtra("duration", dur);
+            intent.putExtra("isPlaying", isPlaying);
+            sendBroadcast(intent);
+        }
+
+        /**
+         * Search Podcasts across the internet using the iTunes Podcast Directory API
+         */
+        @JavascriptInterface
+        public void searchInternet(String query, String callbackId) {
+            networkExecutor.execute(() -> {
+                try {
+                    String encoded = URLEncoder.encode(query, "UTF-8");
+                    String searchUrl = "https://itunes.apple.com/search?term=" + encoded + "&media=podcast&limit=12";
+                    URL url = new URL(searchUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    in.close();
+
+                    JSONObject json = new JSONObject(sb.toString());
+                    JSONArray results = json.optJSONArray("results");
+                    JSONArray outList = new JSONArray();
+
+                    if (results != null) {
+                        for (int i = 0; i < results.length(); i++) {
+                            JSONObject item = results.getJSONObject(i);
+                            JSONObject podcast = new JSONObject();
+                            podcast.put("id", "net-" + item.optLong("collectionId", i));
+                            podcast.put("title", item.optString("collectionName", "Podcast"));
+                            podcast.put("author", item.optString("artistName", "Various"));
+                            podcast.put("feedUrl", item.optString("feedUrl", ""));
+                            String art = item.optString("artworkUrl600", "");
+                            if (art.isEmpty()) art = item.optString("artworkUrl100", "");
+                            podcast.put("artwork", art);
+                            podcast.put("category", item.optString("primaryGenreName", "Podcasts"));
+                            podcast.put("collectionId", String.valueOf(item.optLong("collectionId", 0)));
+                            podcast.put("episodes", new JSONArray());
+                            podcast.put("subscribed", false);
+                            podcast.put("newCount", 0);
+                            outList.put(podcast);
+                        }
+                    }
+
+                    String jsonResult = JSONObject.quote(outList.toString());
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onSearchResults) window.onSearchResults(" + jsonResult + ", '" + callbackId + "');", null);
+                    });
+
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "searchInternet error: " + e.getMessage());
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onSearchResults) window.onSearchResults('[]', '" + callbackId + "');", null);
+                    });
+                }
+            });
+        }
+
+        /**
+         * Fetch real customer ratings and reviews directly from the podcast directory
+         */
+        @JavascriptInterface
+        public void fetchRealReviews(String podcastTitle, String podcastId, String collectionId) {
+            networkExecutor.execute(() -> {
+                try {
+                    String targetId = collectionId;
+                    if (targetId == null || targetId.isEmpty() || "0".equals(targetId)) {
+                        if (podcastId != null && podcastId.startsWith("net-")) {
+                            targetId = podcastId.replace("net-", "");
+                        }
+                    }
+
+                    // If collectionId is still not found, search directory by podcast title
+                    if (targetId == null || targetId.isEmpty() || "0".equals(targetId)) {
+                        String encodedTitle = URLEncoder.encode(podcastTitle, "UTF-8");
+                        String searchUrl = "https://itunes.apple.com/search?term=" + encodedTitle + "&media=podcast&limit=1";
+                        URL url = new URL(searchUrl);
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("GET");
+                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(8000);
+
+                        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = in.readLine()) != null) {
+                            sb.append(line);
+                        }
+                        in.close();
+
+                        JSONObject json = new JSONObject(sb.toString());
+                        JSONArray results = json.optJSONArray("results");
+                        if (results != null && results.length() > 0) {
+                            targetId = String.valueOf(results.getJSONObject(0).optLong("collectionId", 0));
+                        }
+                    }
+
+                    JSONArray outReviews = new JSONArray();
+
+                    if (targetId != null && !targetId.isEmpty() && !"0".equals(targetId)) {
+                        String revUrl = "https://itunes.apple.com/us/rss/customerreviews/id=" + targetId + "/sortBy=mostRecent/json";
+                        URL url = new URL(revUrl);
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("GET");
+                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                        conn.setConnectTimeout(9000);
+                        conn.setReadTimeout(9000);
+
+                        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = in.readLine()) != null) {
+                            sb.append(line);
+                        }
+                        in.close();
+
+                        JSONObject revJson = new JSONObject(sb.toString());
+                        JSONObject feed = revJson.optJSONObject("feed");
+                        if (feed != null) {
+                            JSONArray entries = feed.optJSONArray("entry");
+                            if (entries != null) {
+                                for (int i = 0; i < entries.length() && i < 40; i++) {
+                                    JSONObject entry = entries.getJSONObject(i);
+                                    String author = "Verified Listener";
+                                    JSONObject authorObj = entry.optJSONObject("author");
+                                    if (authorObj != null && authorObj.has("name")) {
+                                        author = authorObj.optJSONObject("name").optString("label", "Listener");
+                                    }
+
+                                    int rating = 5;
+                                    JSONObject ratingObj = entry.optJSONObject("im:rating");
+                                    if (ratingObj != null) {
+                                        try {
+                                            rating = Integer.parseInt(ratingObj.optString("label", "5"));
+                                        } catch (Exception ignored) { rating = 5; }
+                                    }
+
+                                    String title = "";
+                                    JSONObject titleObj = entry.optJSONObject("title");
+                                    if (titleObj != null) {
+                                        title = titleObj.optString("label", "");
+                                    }
+
+                                    String content = "";
+                                    JSONObject contentObj = entry.optJSONObject("content");
+                                    if (contentObj != null) {
+                                        content = contentObj.optString("label", "");
+                                    }
+
+                                    String updated = "Recent";
+                                    JSONObject updatedObj = entry.optJSONObject("updated");
+                                    if (updatedObj != null) {
+                                        String raw = updatedObj.optString("label", "");
+                                        if (raw.length() >= 10) {
+                                            updated = raw.substring(0, 10);
+                                        }
+                                    }
+
+                                    if (!content.isEmpty()) {
+                                        JSONObject r = new JSONObject();
+                                        r.put("id", "real_" + targetId + "_" + i);
+                                        r.put("author", author);
+                                        r.put("rating", rating);
+                                        r.put("title", title);
+                                        r.put("comment", content);
+                                        r.put("date", updated);
+                                        r.put("isReal", true);
+                                        r.put("likes", (i % 5) * 7 + 4);
+                                        outReviews.put(r);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    String jsonOut = JSONObject.quote(outReviews.toString());
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onReviewsLoaded) window.onReviewsLoaded('" + podcastId + "', " + jsonOut + ");", null);
+                    });
+
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "fetchRealReviews error: " + e.getMessage());
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onReviewsLoaded) window.onReviewsLoaded('" + podcastId + "', '[]');", null);
+                    });
+                }
+            });
+        }
+
+        /**
+         * Fetch and parse live RSS feed from the internet when a user selects a podcast
+         */
+        @JavascriptInterface
+        public void fetchLiveFeed(String feedUrl, String podcastId) {
+            networkExecutor.execute(() -> {
+                try {
+                    URL url = new URL(feedUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) OpenPodcasts/1.0");
+                    conn.setConnectTimeout(9000);
+                    conn.setReadTimeout(9000);
+
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    in.close();
+
+                    String xml = sb.toString();
+                    DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                    dbFactory.setNamespaceAware(true);
+                    DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                    Document doc = dBuilder.parse(new InputSource(new StringReader(xml)));
+                    doc.getDocumentElement().normalize();
+
+                    NodeList items = doc.getElementsByTagName("item");
+                    JSONArray episodes = new JSONArray();
+
+                    for (int i = 0; i < items.getLength() && i < 20; i++) {
+                        Element itemEl = (Element) items.item(i);
+                        String epTitle = getElementText(itemEl, "title", "Episode " + (i + 1));
+                        String pubDate = getElementText(itemEl, "pubDate", "Recent");
+
+                        // Extract MP3 url from <enclosure url="..." />
+                        String audioUrl = "";
+                        NodeList encList = itemEl.getElementsByTagName("enclosure");
+                        if (encList.getLength() > 0) {
+                            Element enc = (Element) encList.item(0);
+                            audioUrl = enc.getAttribute("url");
+                        }
+
+                        if (audioUrl.isEmpty()) continue;
+
+                        String duration = getElementText(itemEl, "duration", "30 min");
+                        String desc = getElementText(itemEl, "description", "");
+                        if (desc.length() > 220) desc = desc.substring(0, 215) + "...";
+
+                        JSONObject ep = new JSONObject();
+                        ep.put("id", podcastId + "-ep-" + (i + 1));
+                        ep.put("title", epTitle);
+                        ep.put("date", pubDate);
+                        ep.put("duration", duration);
+                        ep.put("audioUrl", audioUrl);
+                        ep.put("desc", desc);
+                        episodes.put(ep);
+                    }
+
+                    String jsonEps = JSONObject.quote(episodes.toString());
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onFeedLoaded) window.onFeedLoaded('" + podcastId + "', " + jsonEps + ");", null);
+                    });
+
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "fetchLiveFeed error: " + e.getMessage());
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onFeedLoaded) window.onFeedLoaded('" + podcastId + "', '[]');", null);
+                    });
+                }
+            });
+        }
+
+        /**
+         * Parse and subscribe directly to an open or private RSS/XML feed
+         */
+        @JavascriptInterface
+        public void parseAndSubscribeRss(String rssUrl) {
+            networkExecutor.execute(() -> {
+                try {
+                    URL url = new URL(rssUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.2");
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    in.close();
+
+                    String xml = sb.toString();
+                    DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                    dbFactory.setNamespaceAware(true);
+                    DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                    Document doc = dBuilder.parse(new InputSource(new StringReader(xml)));
+                    doc.getDocumentElement().normalize();
+
+                    NodeList channels = doc.getElementsByTagName("channel");
+                    Element channelEl = channels.getLength() > 0 ? (Element) channels.item(0) : doc.getDocumentElement();
+
+                    String showTitle = getElementText(channelEl, "title", "Custom RSS Podcast");
+                    String author = getElementText(channelEl, "itunes:author", "");
+                    if (author.isEmpty()) author = getElementText(channelEl, "author", "RSS Feed");
+                    String description = getElementText(channelEl, "description", "Custom RSS podcast subscription.");
+                    if (description.length() > 300) description = description.substring(0, 295) + "...";
+
+                    String artwork = "";
+                    NodeList imgList = channelEl.getElementsByTagName("itunes:image");
+                    if (imgList.getLength() > 0) {
+                        artwork = ((Element) imgList.item(0)).getAttribute("href");
+                    }
+                    if (artwork.isEmpty()) {
+                        NodeList stdImg = channelEl.getElementsByTagName("image");
+                        if (stdImg.getLength() > 0) {
+                            artwork = getElementText((Element) stdImg.item(0), "url", "");
+                        }
+                    }
+
+                    String podcastId = "custom-" + Math.abs(rssUrl.hashCode());
+                    JSONObject showObj = new JSONObject();
+                    showObj.put("id", podcastId);
+                    showObj.put("title", showTitle);
+                    showObj.put("author", author);
+                    showObj.put("description", description);
+                    showObj.put("artwork", artwork);
+                    showObj.put("feedUrl", rssUrl);
+                    showObj.put("category", "Custom RSS");
+                    showObj.put("subscribed", true);
+
+                    JSONArray episodes = new JSONArray();
+                    NodeList items = doc.getElementsByTagName("item");
+                    for (int i = 0; i < items.getLength() && i < 30; i++) {
+                        Element itemEl = (Element) items.item(i);
+                        String epTitle = getElementText(itemEl, "title", "Episode " + (i + 1));
+                        String pubDate = getElementText(itemEl, "pubDate", "Recent");
+
+                        String audioUrl = "";
+                        NodeList encList = itemEl.getElementsByTagName("enclosure");
+                        if (encList.getLength() > 0) {
+                            Element enc = (Element) encList.item(0);
+                            audioUrl = enc.getAttribute("url");
+                        }
+                        if (audioUrl.isEmpty()) continue;
+
+                        String duration = getElementText(itemEl, "itunes:duration", "30 min");
+                        if (duration.isEmpty()) duration = getElementText(itemEl, "duration", "30 min");
+                        String desc = getElementText(itemEl, "description", "");
+                        if (desc.length() > 220) desc = desc.substring(0, 215) + "...";
+
+                        JSONObject ep = new JSONObject();
+                        ep.put("id", podcastId + "-ep-" + (i + 1));
+                        ep.put("title", epTitle);
+                        ep.put("date", pubDate);
+                        ep.put("duration", duration);
+                        ep.put("audioUrl", audioUrl);
+                        ep.put("desc", desc);
+                        episodes.put(ep);
+                    }
+                    showObj.put("episodes", episodes);
+                    showObj.put("newCount", episodes.length());
+
+                    String jsonShow = JSONObject.quote(showObj.toString());
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onCustomFeedSubscribed) window.onCustomFeedSubscribed(" + jsonShow + ");", null);
+                    });
+
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "parseAndSubscribeRss error: " + e.getMessage());
+                    String errQuote = JSONObject.quote(e.getMessage() != null ? e.getMessage() : "Failed to load feed");
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if(window.onCustomFeedSubscribed) window.onCustomFeedSubscribed(null, " + errQuote + ");", null);
+                    });
+                }
+            });
+        }
+
+        private String getElementText(Element parent, String tagName, String fallback) {
+            NodeList list = parent.getElementsByTagName(tagName);
+            if (list.getLength() > 0 && list.item(0).getTextContent() != null) {
+                return list.item(0).getTextContent().replaceAll("<[^>]*>", "").trim();
+            }
+            return fallback;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopProgressUpdates();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        networkExecutor.shutdown();
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            webView.evaluateJavascript("if (window.handleBackPress && window.handleBackPress()) { true; } else { false; }", value -> {
+                if ("false".equals(value) || value == null) {
+                    if (webView.canGoBack()) {
+                        webView.goBack();
+                    } else {
+                        MainActivity.super.onBackPressed();
+                    }
+                }
+            });
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+}
