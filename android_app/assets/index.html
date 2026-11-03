@@ -933,38 +933,26 @@
       flex: 1;
       min-width: 0;
     }
-    .detail-episode-search-bar {
-      display: none;
-      align-items: center;
-      padding: 8px 16px 12px 16px;
+    .detail-episodes-search-section {
+      padding: 10px 16px 4px 16px;
       background: var(--surface);
-      border-bottom: 1px solid var(--divider-light);
-      position: sticky;
-      top: 56px;
-      z-index: 9;
-      animation: fadeInSearch 0.18s ease-out;
-    }
-    .detail-episode-search-bar.is-visible {
-      display: flex;
-    }
-    @keyframes fadeInSearch {
-      from { opacity: 0; transform: translateY(-6px); }
-      to { opacity: 1; transform: translateY(0); }
     }
     .episode-search-box {
       flex: 1;
-      height: 40px;
+      height: 42px;
       background: var(--surface-variant);
-      border-radius: 20px;
+      border-radius: 21px;
       display: flex;
       align-items: center;
       padding: 0 14px;
       gap: 10px;
       border: 1.5px solid transparent;
-      transition: border-color 0.15s;
+      transition: all 0.2s ease;
     }
     .episode-search-box:focus-within {
       border-color: var(--primary);
+      background: var(--surface);
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.16);
     }
     .episode-search-box svg {
       fill: var(--text-secondary);
@@ -974,7 +962,7 @@
       flex: 1;
       border: none;
       background: transparent;
-      font-size: 14px;
+      font-size: 14.5px;
       color: var(--text-primary);
       outline: none;
     }
@@ -986,9 +974,29 @@
       border: none;
       color: var(--text-tertiary);
       cursor: pointer;
-      font-size: 14px;
+      font-size: 15px;
       display: none;
       padding: 4px;
+      line-height: 1;
+    }
+    .clear-ep-search-btn:hover {
+      color: var(--text-primary);
+    }
+    .episode-search-live-status {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      padding: 0 4px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .ep-search-match {
+      background: rgba(26, 115, 232, 0.22);
+      color: inherit;
+      font-weight: 700;
+      border-radius: 3px;
+      padding: 0 2px;
     }
     .episodes-filter-summary {
       font-size: 12.5px;
@@ -2003,6 +2011,17 @@
 </head>
 <body>
 
+  <!-- Web Banner for APK Download (Visible on Web Browser) -->
+  <div id="webApkBanner" style="display:none; background:linear-gradient(90deg, #1a73e8, #1557b0); color:#fff; padding:10px 16px; align-items:center; justify-content:space-between; font-size:13px; font-weight:600; box-shadow:var(--shadow-sm); z-index:20; position:relative;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      <span>Install OpenPodcasts v1.9 on Android</span>
+    </div>
+    <a href="OpenPodcasts.apk" download="OpenPodcasts.apk" style="background:#fff; color:#1a73e8; padding:6px 14px; border-radius:16px; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
+      Download APK
+    </a>
+  </div>
+
   <!-- Top Header -->
   <header class="app-header">
     <div class="app-brand" id="brandBtn">
@@ -2090,10 +2109,24 @@
         <button class="chip" data-cat="health">Health</button>
         <button class="chip" data-cat="history">History</button>
       </div>
+
+      <!-- Explore Search Mode Toggle (Podcasts vs Episodes) -->
+      <div class="explore-mode-tabs" id="exploreModeTabs" style="display:none;">
+        <button class="explore-mode-tab active" id="exploreModeShowsBtn" data-mode="shows">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+          <span id="exploreShowsTabLabel">Podcasts</span>
+        </button>
+        <button class="explore-mode-tab" id="exploreModeEpisodesBtn" data-mode="episodes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          <span id="exploreEpisodesTabLabel">Episodes</span>
+        </button>
+      </div>
+
       <div class="section-header">
         <h2 class="section-title" id="exploreSectionTitle">Discover podcasts</h2>
       </div>
       <div class="explore-grid" id="exploreGrid"></div>
+      <div class="episodes-feed" id="exploreEpisodesList" style="display:none;"></div>
     </section>
 
     <!-- ACTIVITY TAB -->
@@ -2159,19 +2192,11 @@
           </button>
           <div class="sheet-show-name" id="detailHeaderTitle">Podcast</div>
         </div>
-        <button class="icon-button" id="toggleEpisodeSearchBtn" title="Search episodes in this show">
+        <button class="icon-button" id="toggleEpisodeSearchBtn" title="Search all episodes in this show">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
         </button>
       </div>
 
-      <!-- In-Show Episode Search Bar (Collapsible) -->
-      <div class="detail-episode-search-bar" id="detailEpisodeSearchBar">
-        <div class="episode-search-box">
-          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-          <input type="text" id="episodeSearchInput" placeholder="Search episodes in this podcast..." />
-          <button class="clear-ep-search-btn" id="clearEpSearchBtn">&#x2715;</button>
-        </div>
-      </div>
       <div class="show-header-banner">
         <img class="show-banner-art" id="detailArt" src="" alt="Show cover">
         <div class="show-banner-info">
@@ -2243,6 +2268,16 @@
           <!-- Reviews List -->
           <div class="reviews-list-container" id="showReviewsList"></div>
         </div>
+      </div>
+
+      <!-- Prominent In-Podcast Episode Search -->
+      <div class="detail-episodes-search-section" id="detailEpisodesSearchSection">
+        <div class="episode-search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="episodeSearchInput" placeholder="Search all episodes in this podcast..." />
+          <button class="clear-ep-search-btn" id="clearEpSearchBtn" title="Clear episode search">&#x2715;</button>
+        </div>
+        <div class="episode-search-live-status" id="episodeSearchLiveStatus"></div>
       </div>
 
       <!-- Episodes Feed (Direct, Fast Access) -->
@@ -3068,6 +3103,18 @@
       }
     };
 
+    // Callback when live episode search results return
+    window.onEpisodeSearchResults = function(jsonString, callbackId) {
+      if (app) {
+        try {
+          const episodes = JSON.parse(jsonString);
+          app.handleEpisodeSearchResults(episodes, callbackId);
+        } catch (e) {
+          console.error("Error parsing episode search results:", e);
+        }
+      }
+    };
+
     // Callback when live RSS feed finishes parsing
     window.onFeedLoaded = function(podcastId, episodesJsonString) {
       if (app) {
@@ -3101,6 +3148,13 @@
               this.currentShow = this.shows[0];
               this.currentEpisode = (this.currentShow.episodes && this.currentShow.episodes.length > 0) ? this.currentShow.episodes[0] : null;
               this.loadStorage();
+
+        // Show web APK download banner if accessed from a browser outside the Android App
+        if (typeof window.AndroidBridge === 'undefined') {
+          const banner = this.safeEl('webApkBanner');
+          if (banner) banner.style.display = 'flex';
+        }
+
               this.renderAll();
             }
           }).catch(() => {});
@@ -3124,9 +3178,18 @@
         this.isDarkMode = false;
         this.voiceBoost = false;
         this.episodeSearchQuery = '';
+        this.exploreSearchMode = 'shows';
+        this.currentEpisodeSearchResults = null;
 
         // Load Persistent Queue, Downloads, and History
         this.loadStorage();
+
+        // Show web APK download banner if accessed from a browser outside the Android App
+        if (typeof window.AndroidBridge === 'undefined') {
+          const banner = this.safeEl('webApkBanner');
+          if (banner) banner.style.display = 'flex';
+        }
+
 
         this.initDOM();
         this.bindEvents();
@@ -4131,14 +4194,23 @@
 
       /* LIVE INTERNET SEARCH VIA NATIVE ANDROID BRIDGE */
       triggerInternetSearch(query) {
+        const modeTabs = this.safeEl('exploreModeTabs');
+        const epList = this.safeEl('exploreEpisodesList');
+        const grid = this.safeEl('exploreGrid');
+
         if (!query) {
           this.currentSearchResults = null;
+          this.currentEpisodeSearchResults = null;
+          if (modeTabs) modeTabs.style.display = 'none';
+          if (epList) epList.style.display = 'none';
+          if (grid) grid.style.display = 'grid';
           this.safeEl('searchSpinner').style.display = 'none';
           this.safeEl('exploreSectionTitle').textContent = 'Discover podcasts';
           this.renderExplore();
           return;
         }
 
+        if (modeTabs) modeTabs.style.display = 'flex';
         this.safeEl('searchSpinner').style.display = 'block';
         this.safeEl('exploreSectionTitle').textContent = `Searching worldwide for "${query}"...`;
         this.lastQueryId++;
@@ -4146,8 +4218,11 @@
 
         if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.searchInternet) {
           window.AndroidBridge.searchInternet(query, currentId);
+          if (window.AndroidBridge.searchEpisodesInternet) {
+            window.AndroidBridge.searchEpisodesInternet(query, currentId);
+          }
         } else {
-          // Fallback browser fetch to iTunes API
+          // Fallback browser fetch to iTunes API for shows
           fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=podcast&limit=12`)
             .then(res => res.json())
             .then(data => {
@@ -4165,13 +4240,33 @@
               this.handleSearchResults(results, currentId);
             })
             .catch(() => this.safeEl('searchSpinner').style.display = 'none');
+
+          // Fallback browser fetch to iTunes API for episodes
+          fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=podcastEpisode&limit=15`)
+            .then(res => res.json())
+            .then(data => {
+              const eps = (data.results || []).map((item, i) => ({
+                id: 'net-ep-' + (item.trackId || i),
+                title: item.trackName || 'Episode',
+                showTitle: item.collectionName || 'Podcast',
+                author: item.artistName || 'Various',
+                audioUrl: item.episodeUrl || '',
+                feedUrl: item.feedUrl || '',
+                collectionId: String(item.collectionId || 0),
+                artwork: item.artworkUrl600 || item.artworkUrl160 || item.artworkUrl60 || '',
+                duration: item.trackTimeMillis ? Math.round(item.trackTimeMillis / 60000) + ' min' : '30 min',
+                date: (item.releaseDate || '').substring(0, 10) || 'Recent',
+                desc: (item.shortDescription || item.description || '').replace(/<[^>]*>/g, '').trim()
+              })).filter(e => e.audioUrl);
+              this.handleEpisodeSearchResults(eps, currentId);
+            })
+            .catch(() => {});
         }
       }
 
       handleSearchResults(results, callbackId) {
         if (callbackId !== String(this.lastQueryId)) return; // out of order
         this.safeEl('searchSpinner').style.display = 'none';
-        this.safeEl('exploreSectionTitle').textContent = results.length > 0 ? `Results (${results.length} found)` : 'No podcasts found on the internet';
 
         // Merge with existing subscribed state
         results.forEach(r => {
@@ -4184,7 +4279,142 @@
         });
 
         this.currentSearchResults = results;
-        this.renderExplore(results);
+        const showsLabel = this.safeEl('exploreShowsTabLabel');
+        if (showsLabel) showsLabel.textContent = `Podcasts (${results.length})`;
+
+        if (this.exploreSearchMode === 'shows') {
+          this.safeEl('exploreSectionTitle').textContent = results.length > 0 ? `Podcasts (${results.length} found)` : 'No podcasts found on the internet';
+          this.renderExplore(results);
+        }
+      }
+
+      handleEpisodeSearchResults(episodes, callbackId) {
+        if (callbackId !== String(this.lastQueryId)) return; // out of order
+        this.currentEpisodeSearchResults = episodes;
+        const epsLabel = this.safeEl('exploreEpisodesTabLabel');
+        if (epsLabel) epsLabel.textContent = `Episodes (${episodes.length})`;
+
+        if (this.exploreSearchMode === 'episodes') {
+          this.renderExploreEpisodes(episodes);
+        }
+      }
+
+      switchExploreSearchMode(mode) {
+        this.exploreSearchMode = mode;
+        const showsBtn = this.safeEl('exploreModeShowsBtn');
+        const epsBtn = this.safeEl('exploreModeEpisodesBtn');
+        const grid = this.safeEl('exploreGrid');
+        const epList = this.safeEl('exploreEpisodesList');
+
+        if (mode === 'shows') {
+          if (showsBtn) showsBtn.classList.add('active');
+          if (epsBtn) epsBtn.classList.remove('active');
+          if (grid) grid.style.display = 'grid';
+          if (epList) epList.style.display = 'none';
+          const count = this.currentSearchResults ? this.currentSearchResults.length : 0;
+          this.safeEl('exploreSectionTitle').textContent = count > 0 ? `Podcasts (${count} found)` : 'Podcasts';
+          this.renderExplore(this.currentSearchResults || this.shows);
+        } else {
+          if (showsBtn) showsBtn.classList.remove('active');
+          if (epsBtn) epsBtn.classList.add('active');
+          if (grid) grid.style.display = 'none';
+          if (epList) epList.style.display = 'flex';
+          const count = this.currentEpisodeSearchResults ? this.currentEpisodeSearchResults.length : 0;
+          this.safeEl('exploreSectionTitle').textContent = count > 0 ? `Episodes (${count} found)` : 'Searching episodes...';
+          this.renderExploreEpisodes(this.currentEpisodeSearchResults || []);
+        }
+      }
+
+      renderExploreEpisodes(episodes) {
+        const epList = this.safeEl('exploreEpisodesList');
+        if (!epList) return;
+        epList.innerHTML = '';
+
+        if (!episodes || episodes.length === 0) {
+          epList.innerHTML = `
+            <div class="feed-loading-notice" style="padding:40px 16px; text-align:center;">
+              <div style="font-size:16px; font-weight:600; color:var(--text-primary); margin-bottom:6px;">No episodes found</div>
+              <div style="font-size:13px; color:var(--text-secondary);">Try another search term or switch back to Podcasts.</div>
+            </div>
+          `;
+          return;
+        }
+
+        const query = (this.safeEl('exploreSearchInput').value || '').trim();
+        const terms = query ? query.toLowerCase().split(/\s+/).filter(Boolean) : [];
+
+        episodes.forEach(ep => {
+          const isCurrent = this.currentEpisode && this.currentEpisode.id === ep.id;
+          const isPlaying = isCurrent && this.audio.isPlaying;
+          const card = document.createElement('div');
+          card.className = 'episode-card';
+
+          const titleDisplay = terms.length > 0 ? this.highlightMatch(ep.title || '', terms) : this.escapeHtml(ep.title || '');
+          const descDisplay = terms.length > 0 ? this.highlightMatch(ep.desc || '', terms) : this.escapeHtml(ep.desc || '');
+
+          card.innerHTML = `
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <img class="activity-card-art" src="" alt="${ep.title}" style="width:48px; height:48px; border-radius:8px; object-fit:cover; flex-shrink:0;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:2px; cursor:pointer;" class="explore-ep-show-link">${this.escapeHtml(ep.showTitle || 'Podcast')} &rsaquo;</div>
+                <div class="episode-title">${titleDisplay}</div>
+              </div>
+            </div>
+            <div class="episode-date-dur" style="margin-top:4px;">${ep.date} \u2022 ${ep.duration}</div>
+            <p class="episode-desc">${descDisplay}</p>
+            <div class="episode-actions">
+              <button class="play-pill-btn ${isPlaying ? 'is-active-playing' : ''}">
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  ${isPlaying ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' : '<path d="M8 5v14l11-7z"/>'}
+                </svg>
+                <span>${isPlaying ? 'Playing' : 'Play'}</span>
+              </button>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button class="icon-action-btn ep-queue-btn" title="Add to queue">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
+                </button>
+              </div>
+            </div>
+          `;
+
+          setCoverArt(card.querySelector('.activity-card-art'), ep.artwork, ep.showTitle || ep.title);
+
+          card.querySelector('.play-pill-btn').onclick = () => {
+            const tempShow = {
+              id: 'show-' + (ep.collectionId || 1),
+              title: ep.showTitle || 'Podcast',
+              author: ep.author || 'Various',
+              artwork: ep.artwork,
+              feedUrl: ep.feedUrl,
+              episodes: [ep]
+            };
+            if (isCurrent) {
+              this.audio.togglePlay(ep);
+            } else {
+              this.setEpisode(ep, tempShow, true);
+            }
+          };
+
+          card.querySelector('.explore-ep-show-link').onclick = (e) => {
+            e.stopPropagation();
+            const tempShow = {
+              id: 'show-' + (ep.collectionId || 1),
+              title: ep.showTitle || 'Podcast',
+              author: ep.author || 'Various',
+              artwork: ep.artwork,
+              feedUrl: ep.feedUrl,
+              episodes: [ep]
+            };
+            this.openShowDetail(tempShow);
+          };
+
+          card.querySelector('.ep-queue-btn').onclick = (e) => {
+            e.stopPropagation();
+            this.addToQueue(ep);
+          };
+
+          epList.appendChild(card);
+        });
       }
 
       renderActivity() {
@@ -4495,13 +4725,16 @@
         if (searchInput) searchInput.value = '';
         const clearBtn = this.safeEl('clearEpSearchBtn');
         if (clearBtn) clearBtn.style.display = 'none';
-        const searchBar = this.safeEl('detailEpisodeSearchBar');
-        if (searchBar) searchBar.classList.remove('is-visible');
+        const liveStatus = this.safeEl('episodeSearchLiveStatus');
+        if (liveStatus) {
+          liveStatus.style.display = 'none';
+          liveStatus.innerHTML = '';
+        }
 
         // Render episodes immediately so UI is responsive
         if (!show.episodes || show.episodes.length === 0) {
           if (show.feedUrl) {
-            epList.innerHTML = '<div class="feed-loading-notice">Loading complete episode history...</div>';
+            epList.innerHTML = '<div class="feed-loading-notice">Loading complete episode archive...</div>';
             if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.fetchLiveFeed) {
               window.AndroidBridge.fetchLiveFeed(show.feedUrl, show.id);
             } else {
@@ -4512,7 +4745,7 @@
           }
         } else {
           this.renderShowEpisodes(show);
-          // If the show has a live RSS feed and hasn't loaded its full history yet, fetch in background
+          // If the show has a live RSS feed and hasn't loaded its full archive yet, fetch in background
           if (show.feedUrl && !show.fullHistoryLoaded) {
             if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.fetchLiveFeed) {
               window.AndroidBridge.fetchLiveFeed(show.feedUrl, show.id);
@@ -4526,15 +4759,10 @@
       }
 
       toggleEpisodeSearch() {
-        const searchBar = this.safeEl('detailEpisodeSearchBar');
-        if (!searchBar) return;
-        const isVisible = searchBar.classList.toggle('is-visible');
         const input = this.safeEl('episodeSearchInput');
-        if (isVisible && input) {
-          setTimeout(() => input.focus(), 100);
-        } else if (!isVisible && input) {
-          input.value = '';
-          this.filterEpisodes('');
+        if (input) {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          input.focus();
         }
       }
 
@@ -4555,28 +4783,42 @@
 
         if (!show.episodes || show.episodes.length === 0) {
           epList.innerHTML = '<div class="feed-loading-notice">No episodes found.</div>';
-          this.updateEpisodesSummary(0, 0);
+          this.updateEpisodesSummary(0, 0, false);
           return;
         }
 
-        const query = (this.episodeSearchQuery || '').toLowerCase();
-        const filteredEpisodes = query
+        const rawQuery = (this.episodeSearchQuery || '').trim().toLowerCase();
+        const terms = rawQuery ? rawQuery.split(/\s+/).filter(Boolean) : [];
+
+        const filteredEpisodes = terms.length > 0
           ? show.episodes.filter(ep => {
-              const titleMatch = (ep.title || '').toLowerCase().includes(query);
-              const descMatch = (ep.desc || '').toLowerCase().includes(query);
-              const dateMatch = (ep.date || '').toLowerCase().includes(query);
-              return titleMatch || descMatch || dateMatch;
+              const haystack = `${ep.title || ''} ${ep.desc || ''} ${ep.date || ''}`.toLowerCase();
+              return terms.every(term => haystack.includes(term));
             })
           : show.episodes;
 
-        this.updateEpisodesSummary(filteredEpisodes.length, show.episodes.length);
+        this.updateEpisodesSummary(filteredEpisodes.length, show.episodes.length, terms.length > 0);
+
+        const statusEl = this.safeEl('episodeSearchLiveStatus');
+        if (statusEl) {
+          if (terms.length > 0) {
+            statusEl.style.display = 'flex';
+            const totalText = show.fullHistoryLoaded
+              ? `across entire archive (${show.episodes.length} episodes)`
+              : `in ${show.episodes.length} cached episodes (loading full feed...)`;
+            statusEl.innerHTML = `<span>Found <b>${filteredEpisodes.length}</b> matching episode${filteredEpisodes.length === 1 ? '' : 's'} ${totalText}</span>`;
+          } else {
+            statusEl.style.display = 'none';
+            statusEl.innerHTML = '';
+          }
+        }
 
         if (filteredEpisodes.length === 0) {
           epList.innerHTML = `
             <div class="feed-loading-notice" style="padding:40px 16px; text-align:center;">
               <div style="font-size:16px; font-weight:600; color:var(--text-primary); margin-bottom:6px;">No matching episodes</div>
-              <div style="font-size:13px; color:var(--text-secondary);">No episodes found matching "${this.escapeHtml(this.episodeSearchQuery)}"</div>
-              <button class="empty-subs-btn" id="resetEpSearchBtn" style="margin-top:14px; height:34px; padding:0 16px; font-size:13px;">Show all episodes</button>
+              <div style="font-size:13px; color:var(--text-secondary);">No episodes found matching "${this.escapeHtml(this.episodeSearchQuery)}" in ${this.escapeHtml(show.title)}</div>
+              <button class="empty-subs-btn" id="resetEpSearchBtn" style="margin-top:14px; height:36px; padding:0 18px; font-size:13px;">Clear search & show all episodes</button>
             </div>
           `;
           const resetBtn = this.safeEl('resetEpSearchBtn');
@@ -4595,8 +4837,8 @@
           const isPlaying = isCurrent && this.audio.isPlaying;
           const downloaded = this.isDownloaded(ep.id);
 
-          const titleDisplay = query ? this.highlightMatch(ep.title || '', query) : this.escapeHtml(ep.title || '');
-          const descDisplay = query ? this.highlightMatch(ep.desc || '', query) : this.escapeHtml(ep.desc || '');
+          const titleDisplay = terms.length > 0 ? this.highlightMatch(ep.title || '', terms) : this.escapeHtml(ep.title || '');
+          const descDisplay = terms.length > 0 ? this.highlightMatch(ep.desc || '', terms) : this.escapeHtml(ep.desc || '');
 
           const card = document.createElement('div');
           card.className = 'episode-card';
@@ -4703,14 +4945,15 @@
           .catch(e => console.warn("Web feed fetch error:", e));
       }
 
-      updateEpisodesSummary(visibleCount, totalCount) {
+      updateEpisodesSummary(visibleCount, totalCount, isSearching = false) {
         const titleEl = this.safeEl('detailEpisodesSectionTitle');
         const summaryEl = this.safeEl('detailEpisodesFilterSummary');
+        const searching = isSearching || Boolean(this.episodeSearchQuery);
         if (titleEl) {
-          titleEl.textContent = this.episodeSearchQuery ? 'Search results' : 'All episodes';
+          titleEl.textContent = searching ? 'Search results' : 'All episodes';
         }
         if (summaryEl) {
-          if (this.episodeSearchQuery) {
+          if (searching) {
             summaryEl.textContent = `(${visibleCount} of ${totalCount})`;
           } else {
             summaryEl.textContent = totalCount > 0 ? `(${totalCount})` : '';
@@ -4728,15 +4971,20 @@
           .replace(/'/g, '&#039;');
       }
 
-      highlightMatch(text, query) {
+      highlightMatch(text, terms) {
         if (!text) return '';
-        if (!query) return this.escapeHtml(text);
-        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(${escapedQuery})`, 'gi');
+        if (!terms || terms.length === 0) return this.escapeHtml(text);
+        let termList = Array.isArray(terms) ? terms : String(terms).trim().split(/\s+/).filter(Boolean);
+        if (termList.length === 0) return this.escapeHtml(text);
+
+        // Sort terms by length descending
+        termList = termList.slice().sort((a, b) => b.length - a.length);
+        const escaped = termList.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+        const regex = new RegExp(`(${escaped})`, 'gi');
         const parts = text.split(regex);
         return parts.map(part => {
-          if (part.toLowerCase() === query.toLowerCase()) {
-            return `<mark style="background:rgba(26,115,232,0.22); color:inherit; font-weight:700; border-radius:3px; padding:0 2px;">${this.escapeHtml(part)}</mark>`;
+          if (termList.some(t => t.toLowerCase() === part.toLowerCase())) {
+            return `<mark class="ep-search-match">${this.escapeHtml(part)}</mark>`;
           }
           return this.escapeHtml(part);
         }).join('');
@@ -4747,8 +4995,13 @@
         this.episodeSearchQuery = '';
         const searchInput = this.safeEl('episodeSearchInput');
         if (searchInput) searchInput.value = '';
-        const searchBar = this.safeEl('detailEpisodeSearchBar');
-        if (searchBar) searchBar.classList.remove('is-visible');
+        const clearBtn = this.safeEl('clearEpSearchBtn');
+        if (clearBtn) clearBtn.style.display = 'none';
+        const liveStatus = this.safeEl('episodeSearchLiveStatus');
+        if (liveStatus) {
+          liveStatus.style.display = 'none';
+          liveStatus.innerHTML = '';
+        }
       }
 
       switchTab(tabName) {
@@ -4988,8 +5241,18 @@
           this.safeEl('exploreSearchInput').value = '';
           this.safeEl('clearSearchBtn').style.display = 'none';
           this.currentSearchResults = null;
+          this.currentEpisodeSearchResults = null;
           this.triggerInternetSearch('');
         };
+
+        const showsModeBtn = this.safeEl('exploreModeShowsBtn');
+        if (showsModeBtn) {
+          showsModeBtn.onclick = () => this.switchExploreSearchMode('shows');
+        }
+        const epsModeBtn = this.safeEl('exploreModeEpisodesBtn');
+        if (epsModeBtn) {
+          epsModeBtn.onclick = () => this.switchExploreSearchMode('episodes');
+        }
 
         // Mini player
         this.safeEl('miniInfoWrap').onclick = () => this.openNowPlayingSheet();

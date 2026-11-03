@@ -497,6 +497,91 @@ public class MainActivity extends Activity {
         }
 
         /**
+         * Search Individual Podcast Episodes across the directory
+         */
+        @JavascriptInterface
+        public void searchEpisodesInternet(String query, String callbackId) {
+            networkExecutor.execute(() -> {
+                HttpURLConnection conn = null;
+                try {
+                    String encoded = URLEncoder.encode(query, "UTF-8");
+                    String searchUrl = "https://itunes.apple.com/search?term=" + encoded + "&entity=podcastEpisode&limit=20";
+                    URL url = new URL(searchUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    in.close();
+
+                    JSONObject json = new JSONObject(sb.toString());
+                    JSONArray results = json.optJSONArray("results");
+                    JSONArray outList = new JSONArray();
+
+                    if (results != null) {
+                        for (int i = 0; i < results.length(); i++) {
+                            JSONObject item = results.getJSONObject(i);
+                            String audioUrl = item.optString("episodeUrl", "");
+                            if (audioUrl.isEmpty()) continue;
+
+                            JSONObject ep = new JSONObject();
+                            ep.put("id", "net-ep-" + item.optLong("trackId", i));
+                            ep.put("title", item.optString("trackName", "Episode"));
+                            ep.put("showTitle", item.optString("collectionName", "Podcast"));
+                            ep.put("author", item.optString("artistName", "Various"));
+                            ep.put("audioUrl", audioUrl);
+                            ep.put("feedUrl", item.optString("feedUrl", ""));
+                            ep.put("collectionId", String.valueOf(item.optLong("collectionId", 0)));
+
+                            String art = item.optString("artworkUrl600", "");
+                            if (art.isEmpty()) art = item.optString("artworkUrl160", "");
+                            if (art.isEmpty()) art = item.optString("artworkUrl60", "");
+                            ep.put("artwork", art);
+
+                            long durMillis = item.optLong("trackTimeMillis", 0);
+                            String durStr = durMillis > 0 ? (durMillis / 60000) + " min" : "30 min";
+                            ep.put("duration", durStr);
+
+                            String relDate = item.optString("releaseDate", "");
+                            if (relDate.length() >= 10) relDate = relDate.substring(0, 10);
+                            ep.put("date", relDate.isEmpty() ? "Recent" : relDate);
+
+                            String desc = item.optString("shortDescription", "");
+                            if (desc.isEmpty()) desc = item.optString("description", "");
+                            desc = desc.replaceAll("<[^>]*>", "").trim();
+                            if (desc.length() > 240) desc = desc.substring(0, 235) + "...";
+                            ep.put("desc", desc);
+
+                            outList.put(ep);
+                        }
+                    }
+
+                    String jsonResult = JSONObject.quote(outList.toString());
+                    runOnUiThread(() -> {
+                        if (webView != null) webView.evaluateJavascript("if(window.onEpisodeSearchResults) window.onEpisodeSearchResults(" + jsonResult + ", '" + callbackId + "');", null);
+                    });
+
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "searchEpisodesInternet error: " + e.getMessage());
+                    runOnUiThread(() -> {
+                        if (webView != null) webView.evaluateJavascript("if(window.onEpisodeSearchResults) window.onEpisodeSearchResults('[]', '" + callbackId + "');", null);
+                    });
+                } finally {
+                    if (conn != null) {
+                        try { conn.disconnect(); } catch (Exception ignored) {}
+                    }
+                }
+            });
+        }
+
+        /**
          * Fetch real customer ratings and reviews directly from the podcast directory
          */
         @JavascriptInterface
@@ -668,7 +753,7 @@ public class MainActivity extends Activity {
                     NodeList items = doc.getElementsByTagName("item");
                     JSONArray episodes = new JSONArray();
 
-                    for (int i = 0; i < items.getLength() && i < 500; i++) {
+                    for (int i = 0; i < items.getLength() && i < 3000; i++) {
                         Element itemEl = (Element) items.item(i);
                         String epTitle = getElementText(itemEl, "title", "Episode " + (i + 1));
                         String pubDate = getElementText(itemEl, "pubDate", "Recent");
@@ -783,7 +868,7 @@ public class MainActivity extends Activity {
 
                     JSONArray episodes = new JSONArray();
                     NodeList items = doc.getElementsByTagName("item");
-                    for (int i = 0; i < items.getLength() && i < 500; i++) {
+                    for (int i = 0; i < items.getLength() && i < 3000; i++) {
                         Element itemEl = (Element) items.item(i);
                         String epTitle = getElementText(itemEl, "title", "Episode " + (i + 1));
                         String pubDate = getElementText(itemEl, "pubDate", "Recent");

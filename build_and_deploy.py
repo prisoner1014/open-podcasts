@@ -103,14 +103,14 @@ except Exception:
     pass
 print("[+] APK built successfully:", final_apk, f"({os.path.getsize(final_apk)} bytes)")
 
-# 10. Install on physical device (auto-reconnecting over Wi-Fi if needed)
+# 10. Install on physical device (Samsung Galaxy Fold RFGL705LSPK)
 print("[*] Installing on Samsung device...")
-subprocess.run(f'"{ADB}" connect 192.168.1.236:5555', shell=True)
-install_res = run(f'"{ADB}" install -r -d "{final_apk}"', "Installing APK on phone")
+DEVICE_TARGET = "-s RFGL705LSPK"
+install_res = run(f'"{ADB}" {DEVICE_TARGET} install -r -d "{final_apk}"', "Installing APK on phone")
 
 # 11. Launch app
 print("[*] Launching com.openpodcasts.app...")
-run(f'"{ADB}" shell am start -S -n com.openpodcasts.app/.MainActivity', "Launching MainActivity")
+run(f'"{ADB}" {DEVICE_TARGET} shell am start -S -n com.openpodcasts.app/.MainActivity', "Launching MainActivity")
 
 # 12. Wait for rendering and screenshot
 time.sleep(3)
@@ -118,7 +118,7 @@ screenshot_remote = "/sdcard/openpodcasts_phone.png"
 screenshot_local = os.path.join(ARTIFACT_DIR, "openpodcasts_phone.png")
 screenshot_workspace = os.path.join(BASE_DIR, "openpodcasts_phone.png")
 
-run(f'"{ADB}" shell screencap -p "{screenshot_remote}"', "Capturing device screenshot")
-run(f'"{ADB}" pull "{screenshot_remote}" "{screenshot_local}"', "Pulling screenshot to artifacts")
+run(f'"{ADB}" {DEVICE_TARGET} shell screencap -p "{screenshot_remote}"', "Capturing device screenshot")
+run(f'"{ADB}" {DEVICE_TARGET} pull "{screenshot_remote}" "{screenshot_local}"', "Pulling screenshot to artifacts")
 shutil.copy2(screenshot_local, screenshot_workspace)
 print("[+] Screenshot captured:", screenshot_local)
