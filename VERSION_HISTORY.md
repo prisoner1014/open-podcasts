@@ -8,7 +8,24 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [v1.7.0] - 2026-11-03 (Build 10) - LATEST
+## [v1.8.0] - 2026-11-03 (Build 11) - LATEST
+
+### Summary
+In-Podcast Episode Search & Responsive Now Playing Player Controls:
+- **In-Podcast Episode Search & Real-Time Filtering**:
+  - Dedicated search button in the podcast show detail view header toggling a smooth collapsible search input bar.
+  - Real-time client-side episode filtering across episode titles, descriptions, and publication dates with zero latency.
+  - Visual keyword match highlighting with subtle accent `<mark>` tags.
+  - Active search counter display `(X of Y)` updating dynamically alongside the section header.
+  - Intuitive empty search state with one-tap "Show all episodes" reset button.
+- **Responsive Now Playing Player Controls (Zero Horizontal Scrolling)**:
+  - Redesigned the secondary action pills row into a responsive 3x2 grid layout (Download, Speed, Trim, Boost, Timer, Notes) on phones with 6x1 tablet expansion.
+  - Added strict `overflow-x: hidden` and auto-fitting pill widths (`minmax(0, 1fr)`) to prevent horizontal overflow and scrolling on any device.
+  - Added speedometer SVG icon to playback speed button for unified visual consistency across all 6 action pills.
+
+---
+
+## [v1.7.0] - 2026-11-03 (Build 10)
 
 ### Summary
 Advanced Voice Boost & Dialogue Normalization engine providing crystal-clear speech leveling in noisy environments (cars, commutes, workouts) without audio clipping or distortion:

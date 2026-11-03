@@ -918,13 +918,83 @@
       height: 56px;
       display: flex;
       align-items: center;
-      padding: 0 8px;
-      gap: 12px;
+      justify-content: space-between;
+      padding: 0 8px 0 4px;
       position: sticky;
       top: 0;
       background: var(--surface);
       z-index: 10;
       border-bottom: 1px solid var(--divider-light);
+    }
+    .detail-nav-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+    .detail-episode-search-bar {
+      display: none;
+      align-items: center;
+      padding: 8px 16px 12px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--divider-light);
+      position: sticky;
+      top: 56px;
+      z-index: 9;
+      animation: fadeInSearch 0.18s ease-out;
+    }
+    .detail-episode-search-bar.is-visible {
+      display: flex;
+    }
+    @keyframes fadeInSearch {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .episode-search-box {
+      flex: 1;
+      height: 40px;
+      background: var(--surface-variant);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 10px;
+      border: 1.5px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .episode-search-box:focus-within {
+      border-color: var(--primary);
+    }
+    .episode-search-box svg {
+      fill: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .episode-search-box input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+    }
+    .episode-search-box input::placeholder {
+      color: var(--text-tertiary);
+    }
+    .clear-ep-search-btn {
+      background: none;
+      border: none;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      font-size: 14px;
+      display: none;
+      padding: 4px;
+    }
+    .episodes-filter-summary {
+      font-size: 12.5px;
+      color: var(--primary);
+      font-weight: 600;
+      margin-left: 8px;
     }
     .show-header-banner {
       padding: 20px 16px;
@@ -1407,6 +1477,7 @@
       transform: translateY(100%);
       transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
       overflow-y: auto;
+      overflow-x: hidden;
     }
     .now-playing-sheet.open {
       transform: translateY(0);
@@ -1562,30 +1633,56 @@
       height: 32px;
     }
 
-    /* Secondary Controls */
+    /* Secondary Controls - Responsive 3x2 Grid (Phone) / 6x1 (Tablet) */
     .sheet-secondary-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      padding: 12px 24px 32px 24px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px 14px 28px 14px;
       border-top: 1px solid var(--divider-light);
+      box-sizing: border-box;
+      width: 100%;
+      overflow-x: hidden;
     }
     .pill-action {
       height: 36px;
-      padding: 0 14px;
+      padding: 0 6px;
       border-radius: 18px;
       border: 1px solid var(--divider);
       background: var(--surface);
       color: var(--text-secondary);
-      font-size: 13px;
+      font-size: 11.5px;
       font-weight: 600;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      gap: 5px;
       cursor: pointer;
+      width: 100%;
+      box-sizing: border-box;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.15s ease;
+    }
+    .pill-action svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+    .pill-action span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .pill-action:active {
       background: var(--surface-variant);
+      transform: scale(0.96);
+    }
+    @media (min-width: 600px) {
+      .sheet-secondary-row {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
     }
 
     /* Bottom Navigation Bar */
@@ -1923,7 +2020,7 @@
           <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
         </svg>
       </button>
-      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v1.7</button>
+      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v1.8</button>
       <button class="icon-button" id="headerSearchBtn" title="Search">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       </button>
@@ -2056,10 +2153,24 @@
     <!-- SHOW DETAIL VIEW -->
     <div class="show-detail-view" id="showDetailView">
       <div class="detail-nav-bar">
-        <button class="icon-button" id="closeDetailBtn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        <div class="detail-nav-left">
+          <button class="icon-button" id="closeDetailBtn" title="Back">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <div class="sheet-show-name" id="detailHeaderTitle">Podcast</div>
+        </div>
+        <button class="icon-button" id="toggleEpisodeSearchBtn" title="Search episodes in this show">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
         </button>
-        <div class="sheet-show-name" id="detailHeaderTitle">Podcast</div>
+      </div>
+
+      <!-- In-Show Episode Search Bar (Collapsible) -->
+      <div class="detail-episode-search-bar" id="detailEpisodeSearchBar">
+        <div class="episode-search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="episodeSearchInput" placeholder="Search episodes in this podcast..." />
+          <button class="clear-ep-search-btn" id="clearEpSearchBtn">&#x2715;</button>
+        </div>
       </div>
       <div class="show-header-banner">
         <img class="show-banner-art" id="detailArt" src="" alt="Show cover">
@@ -2136,7 +2247,10 @@
 
       <!-- Episodes Feed (Direct, Fast Access) -->
       <div class="section-header">
-        <h2 class="section-title">All episodes</h2>
+        <div style="display:flex; align-items:center;">
+          <h2 class="section-title" id="detailEpisodesSectionTitle">All episodes</h2>
+          <span class="episodes-filter-summary" id="detailEpisodesFilterSummary"></span>
+        </div>
       </div>
       <div class="episodes-feed" id="detailEpisodesList"></div>
     </div>
@@ -2219,7 +2333,8 @@
         </span>
         <span id="sheetDownloadLabel">Download</span>
       </button>
-      <button class="pill-action" id="speedPillBtn">
+      <button class="pill-action" id="speedPillBtn" title="Adjust playback speed and silence">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.28-10.43zM10.59 15.41a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
         <span id="speedLabel">1.0x</span>
       </button>
       <button class="pill-action" id="trimPillBtn" title="Trim silence and dead air">
@@ -2384,18 +2499,32 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <div>
           <div class="modal-title" style="margin-bottom:2px; font-size:18px;">Version History</div>
-          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v1.7 • Current Release</div>
+          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v1.8 • Current Release</div>
         </div>
         <button class="icon-button" id="closeVersionModalBtn" style="width:36px; height:36px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </div>
 
-      <!-- Release v1.7 (CURRENT - Voice Boost) -->
+      <!-- Release v1.8 (CURRENT - In-Podcast Search & Responsive Player Buttons) -->
       <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:2px solid var(--primary);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.7</span>
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.8</span>
           <span style="background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;">LATEST</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 11</div>
+        <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
+          <li><strong>In-Podcast Episode Search:</strong> Instant live episode filtering inside any podcast show view with keyword highlighting, result counter <code>(X of Y)</code>, and empty state reset button.</li>
+          <li><strong>Responsive Now Playing Buttons:</strong> Redesigned player secondary action buttons into a clean 3x2 responsive grid (Download, Speed, Trim, Boost, Timer, Notes) with auto-fitting width and zero horizontal scrolling.</li>
+          <li><strong>Consistent Control Icons:</strong> Added speedometer icon to speed pill for a unified icon-and-label presentation across all player controls.</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.7 (Voice Boost) -->
+      <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:1px solid var(--divider-light); opacity:0.95;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.7</span>
+          <span style="background:var(--surface); color:var(--text-secondary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid var(--divider);">BUILD 10</span>
         </div>
         <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 10</div>
         <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
@@ -2976,6 +3105,7 @@
         this.configuringShow = null;
         this.isDarkMode = false;
         this.voiceBoost = false;
+        this.episodeSearchQuery = '';
 
         // Load Persistent Queue, Downloads, and History
         this.loadStorage();
@@ -4342,6 +4472,14 @@
         const epList = this.safeEl('detailEpisodesList');
         epList.innerHTML = '';
 
+        this.episodeSearchQuery = '';
+        const searchInput = this.safeEl('episodeSearchInput');
+        if (searchInput) searchInput.value = '';
+        const clearBtn = this.safeEl('clearEpSearchBtn');
+        if (clearBtn) clearBtn.style.display = 'none';
+        const searchBar = this.safeEl('detailEpisodeSearchBar');
+        if (searchBar) searchBar.classList.remove('is-visible');
+
         // If this show was found via internet search and hasn't loaded its RSS feed yet
         if (!show.episodes || show.episodes.length === 0) {
           if (show.feedUrl) {
@@ -4359,26 +4497,85 @@
         this.safeEl('showDetailView').classList.add('active');
       }
 
+      toggleEpisodeSearch() {
+        const searchBar = this.safeEl('detailEpisodeSearchBar');
+        if (!searchBar) return;
+        const isVisible = searchBar.classList.toggle('is-visible');
+        const input = this.safeEl('episodeSearchInput');
+        if (isVisible && input) {
+          setTimeout(() => input.focus(), 100);
+        } else if (!isVisible && input) {
+          input.value = '';
+          this.filterEpisodes('');
+        }
+      }
+
+      filterEpisodes(query) {
+        this.episodeSearchQuery = (query || '').trim();
+        const clearBtn = this.safeEl('clearEpSearchBtn');
+        if (clearBtn) {
+          clearBtn.style.display = this.episodeSearchQuery ? 'block' : 'none';
+        }
+        if (this.currentShow) {
+          this.renderShowEpisodes(this.currentShow);
+        }
+      }
+
       renderShowEpisodes(show) {
         const epList = this.safeEl('detailEpisodesList');
         epList.innerHTML = '';
 
         if (!show.episodes || show.episodes.length === 0) {
           epList.innerHTML = '<div class="feed-loading-notice">No episodes found.</div>';
+          this.updateEpisodesSummary(0, 0);
           return;
         }
 
-        show.episodes.forEach(ep => {
+        const query = (this.episodeSearchQuery || '').toLowerCase();
+        const filteredEpisodes = query
+          ? show.episodes.filter(ep => {
+              const titleMatch = (ep.title || '').toLowerCase().includes(query);
+              const descMatch = (ep.desc || '').toLowerCase().includes(query);
+              const dateMatch = (ep.date || '').toLowerCase().includes(query);
+              return titleMatch || descMatch || dateMatch;
+            })
+          : show.episodes;
+
+        this.updateEpisodesSummary(filteredEpisodes.length, show.episodes.length);
+
+        if (filteredEpisodes.length === 0) {
+          epList.innerHTML = `
+            <div class="feed-loading-notice" style="padding:40px 16px; text-align:center;">
+              <div style="font-size:16px; font-weight:600; color:var(--text-primary); margin-bottom:6px;">No matching episodes</div>
+              <div style="font-size:13px; color:var(--text-secondary);">No episodes found matching "${this.escapeHtml(this.episodeSearchQuery)}"</div>
+              <button class="empty-subs-btn" id="resetEpSearchBtn" style="margin-top:14px; height:34px; padding:0 16px; font-size:13px;">Show all episodes</button>
+            </div>
+          `;
+          const resetBtn = this.safeEl('resetEpSearchBtn');
+          if (resetBtn) {
+            resetBtn.onclick = () => {
+              const input = this.safeEl('episodeSearchInput');
+              if (input) input.value = '';
+              this.filterEpisodes('');
+            };
+          }
+          return;
+        }
+
+        filteredEpisodes.forEach(ep => {
           const isCurrent = this.currentEpisode && this.currentEpisode.id === ep.id;
           const isPlaying = isCurrent && this.audio.isPlaying;
           const downloaded = this.isDownloaded(ep.id);
 
+          const titleDisplay = query ? this.highlightMatch(ep.title || '', query) : this.escapeHtml(ep.title || '');
+          const descDisplay = query ? this.highlightMatch(ep.desc || '', query) : this.escapeHtml(ep.desc || '');
+
           const card = document.createElement('div');
           card.className = 'episode-card';
           card.innerHTML = `
-            <div class="episode-title">${ep.title}</div>
+            <div class="episode-title">${titleDisplay}</div>
             <div class="episode-date-dur">${ep.date} • ${ep.duration}</div>
-            <p class="episode-desc">${ep.desc}</p>
+            <p class="episode-desc">${descDisplay}</p>
             <div class="episode-actions">
               <button class="play-pill-btn ${isPlaying ? 'is-active-playing' : ''}">
                 <svg width="18" height="18" viewBox="0 0 24 24">
@@ -4429,8 +4626,52 @@
         }
       }
 
+      updateEpisodesSummary(visibleCount, totalCount) {
+        const titleEl = this.safeEl('detailEpisodesSectionTitle');
+        const summaryEl = this.safeEl('detailEpisodesFilterSummary');
+        if (titleEl) {
+          titleEl.textContent = this.episodeSearchQuery ? 'Search results' : 'All episodes';
+        }
+        if (summaryEl) {
+          if (this.episodeSearchQuery) {
+            summaryEl.textContent = `(${visibleCount} of ${totalCount})`;
+          } else {
+            summaryEl.textContent = totalCount > 0 ? `(${totalCount})` : '';
+          }
+        }
+      }
+
+      escapeHtml(text) {
+        if (!text) return '';
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      highlightMatch(text, query) {
+        if (!text) return '';
+        if (!query) return this.escapeHtml(text);
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedQuery})`, 'gi');
+        const parts = text.split(regex);
+        return parts.map(part => {
+          if (part.toLowerCase() === query.toLowerCase()) {
+            return `<mark style="background:rgba(26,115,232,0.22); color:inherit; font-weight:700; border-radius:3px; padding:0 2px;">${this.escapeHtml(part)}</mark>`;
+          }
+          return this.escapeHtml(part);
+        }).join('');
+      }
+
       closeShowDetail() {
         this.safeEl('showDetailView').classList.remove('active');
+        this.episodeSearchQuery = '';
+        const searchInput = this.safeEl('episodeSearchInput');
+        if (searchInput) searchInput.value = '';
+        const searchBar = this.safeEl('detailEpisodeSearchBar');
+        if (searchBar) searchBar.classList.remove('is-visible');
       }
 
       switchTab(tabName) {
@@ -5025,7 +5266,7 @@
           };
         }
 
-        // Show Detail
+        // Show Detail & In-Podcast Search
         this.safeEl('closeDetailBtn').onclick = () => this.closeShowDetail();
         this.safeEl('detailSubBtn').onclick = () => {
           if (this.currentShow) {
@@ -5033,6 +5274,23 @@
             this.openShowDetail(this.currentShow);
           }
         };
+
+        const toggleEpSearchBtn = this.safeEl('toggleEpisodeSearchBtn');
+        if (toggleEpSearchBtn) {
+          toggleEpSearchBtn.onclick = () => this.toggleEpisodeSearch();
+        }
+        const epSearchInput = this.safeEl('episodeSearchInput');
+        if (epSearchInput) {
+          epSearchInput.oninput = (e) => this.filterEpisodes(e.target.value);
+        }
+        const clearEpBtn = this.safeEl('clearEpSearchBtn');
+        if (clearEpBtn) {
+          clearEpBtn.onclick = () => {
+            const input = this.safeEl('episodeSearchInput');
+            if (input) input.value = '';
+            this.filterEpisodes('');
+          };
+        }
 
         // Show Playback & Auto-Skip Settings Modal
         const showSettingsBtn = this.safeEl('showSettingsBtn');
@@ -5432,7 +5690,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       app = new OpenPodcastsApp();
       window.app = app;
-      console.log('OpenPodcasts v1.6 initialized with Dark Mode support.');
+      console.log('OpenPodcasts v1.8 initialized with In-Podcast Episode Search & Responsive Now Playing Controls.');
     });
   </script>
 </body>
