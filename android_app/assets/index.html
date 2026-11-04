@@ -443,19 +443,21 @@
 /* Subscriptions Grid (Home) */
     .subs-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
       padding: 4px 16px 24px 16px;
+      width: 100%;
+      box-sizing: border-box;
     }
     @media (min-width: 600px) {
       .subs-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 18px;
       }
     }
     @media (min-width: 900px) {
       .subs-grid {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
     }
 
@@ -466,6 +468,9 @@
       cursor: pointer;
       border-radius: var(--radius-md);
       transition: transform 0.15s;
+      min-width: 0;
+      width: 100%;
+      box-sizing: border-box;
     }
     .sub-card:active {
       transform: scale(0.97);
@@ -474,16 +479,19 @@
     .sub-card-art-wrap {
       position: relative;
       width: 100%;
-      aspect-ratio: 1;
+      aspect-ratio: 1 / 1;
       border-radius: var(--radius-md);
       overflow: hidden;
       box-shadow: var(--shadow-sm);
       background: var(--surface-variant);
       border: 1px solid var(--divider-light);
+      min-width: 0;
+      box-sizing: border-box;
     }
     .sub-card-art {
       width: 100%;
       height: 100%;
+      aspect-ratio: 1 / 1;
       object-fit: cover;
       display: block;
     }
@@ -516,6 +524,9 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0;
+      width: 100%;
+      box-sizing: border-box;
     }
     .sub-card-author {
       font-size: 12px;
@@ -524,6 +535,9 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .empty-subs {
@@ -2069,8 +2083,10 @@
       <!-- Manage & Reorder Subscriptions Toolbar -->
       <div class="manage-bar" id="homeManageBar" style="display:none;">
         <span class="manage-hint">Move podcast order or remove shows</span>
-        <div style="display:flex; gap:6px;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
           <button class="manage-action-pill" id="homeAddRssBtn">+ Add RSS</button>
+          <button class="manage-action-pill" id="homeImportOpmlBtn" style="color:var(--primary); font-weight:600;">Import OPML</button>
+          <button class="manage-action-pill" id="homeExportOpmlBtn">Export OPML</button>
           <button class="manage-action-pill" id="openReorderModalBtn">Reorder List</button>
           <button class="manage-action-pill" id="sortAZBtn">Sort A–Z</button>
         </div>
@@ -2080,7 +2096,10 @@
 
       <div class="empty-subs" id="emptySubsView" style="display:none;">
         <p>You haven't subscribed to any podcasts yet.</p>
-        <button class="empty-subs-btn" id="findShowsBtn">Explore Podcasts</button>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:8px;">
+          <button class="empty-subs-btn" id="findShowsBtn">Explore Podcasts</button>
+          <button class="empty-subs-btn" id="emptyImportOpmlBtn" style="background:var(--surface-variant); color:var(--text-primary); border:1px solid var(--divider-light);">Import OPML</button>
+        </div>
       </div>
     </section>
 
@@ -2166,8 +2185,18 @@
       </div>
 
       <div class="activity-panel" id="panelSubs">
-        <div class="section-header" style="padding:0 0 12px 0;">
+        <div class="section-header" style="padding:0 0 12px 0; display:flex; align-items:center; justify-content:space-between;">
           <span class="section-title" id="subCount">4 shows</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="icon-button" id="importOpmlBtn" title="Import subscriptions from OPML file" style="font-size:12px; color:var(--primary); width:auto; border-radius:12px; padding:0 10px; background:var(--surface-variant); height:28px; font-weight:600; display:flex; align-items:center; gap:4px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+              <span>Import</span>
+            </button>
+            <button class="icon-button" id="exportOpmlBtn" title="Export subscriptions to OPML file" style="font-size:12px; color:var(--text-secondary); width:auto; border-radius:12px; padding:0 10px; background:var(--surface-variant); height:28px; font-weight:600; display:flex; align-items:center; gap:4px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+              <span>Export</span>
+            </button>
+          </div>
         </div>
         <div class="explore-grid" id="manageSubsGrid"></div>
         <div class="version-banner-card" id="activityVersionCard" style="margin-top:24px; padding:14px 16px; background:var(--surface-variant); border-radius:var(--radius-md); display:flex; align-items:center; justify-content:space-between; cursor:pointer; border:1px solid var(--divider-light);">
@@ -2519,6 +2548,69 @@
     </div>
   </div>
 
+  <!-- OPML Import & Migration Modal -->
+  <div class="modal-backdrop" id="opmlModalBackdrop">
+    <div class="modal-sheet" style="padding: 22px; max-height: 85vh; overflow-y: auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+          <div class="modal-title" style="margin-bottom:2px; font-size:18px;">Import Subscriptions</div>
+          <div style="font-size:12.5px; color:var(--text-secondary);">Migrate feeds from Google Podcasts, Pocket Casts, or OPML</div>
+        </div>
+        <button class="icon-button" id="closeOpmlModalBtn" style="width:36px; height:36px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
+      <!-- File Picker Dropzone Card -->
+      <input type="file" id="opmlFileInput" accept=".opml,.xml,text/xml,application/xml" style="display:none;">
+      <div id="opmlDropzone" style="border: 2px dashed var(--divider); border-radius: var(--radius-md); padding: 18px 14px; text-align: center; cursor: pointer; background: var(--surface-variant); transition: border-color 0.2s;">
+        <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-container); color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        </div>
+        <div style="font-size: 14.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Choose OPML or XML file</div>
+        <div style="font-size: 12px; color: var(--text-secondary);">Tap to open Downloads folder / files & select subscriptions</div>
+        <div id="opmlSelectedFileLabel" style="font-size: 12.5px; font-weight: 600; color: var(--primary); margin-top: 8px; display: none;"></div>
+      </div>
+
+      <!-- Detected Files in Downloads -->
+      <div id="opmlDownloadsSection" style="margin-top: 14px; display: none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size: 12.5px; font-weight: 600; color: var(--text-secondary);">Detected in Downloads Folder:</label>
+          <button class="manage-action-pill" id="opmlRescanBtn" style="font-size:11px; padding:2px 8px;">Scan</button>
+        </div>
+        <div id="opmlDownloadsList" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- Textarea for Direct Paste -->
+      <div style="margin-top: 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size: 12.5px; font-weight: 600; color: var(--text-secondary);">Or paste OPML XML content:</label>
+          <button class="manage-action-pill" id="sampleOpmlBtn" style="font-size:11px; padding:2px 8px;">Load Sample OPML</button>
+        </div>
+        <textarea id="opmlTextInput" class="composer-input" rows="4" placeholder='<?xml version="1.0" encoding="UTF-8"?><opml version="2.0">...<outline text="..." xmlUrl="..." />...</opml>' style="font-family: monospace; font-size: 12px; line-height: 1.4; resize: vertical; padding: 10px;"></textarea>
+      </div>
+
+      <!-- Progress status -->
+      <div id="opmlProgressWrap" style="display:none; margin-top:14px; background:var(--surface-variant); padding:12px 14px; border-radius:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span id="opmlProgressText" style="font-size:13px; font-weight:600; color:var(--text-primary);">Importing subscriptions...</span>
+          <span id="opmlProgressCount" style="font-size:12px; font-weight:600; color:var(--primary);">0 / 0</span>
+        </div>
+        <div style="background:var(--divider-light); border-radius:4px; height:6px; overflow:hidden;">
+          <div id="opmlProgressBar" style="width:0%; height:100%; background:var(--primary); transition:width 0.25s;"></div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:18px;">
+        <button class="composer-cancel-btn" id="cancelOpmlModalBtn" style="height:38px; padding:0 18px;">Cancel</button>
+        <button class="composer-submit-btn" id="submitOpmlModalBtn" style="height:38px; padding:0 22px; display:inline-flex; align-items:center; gap:6px;">
+          <span id="opmlSubmitText">Import Subscriptions</span>
+          <div class="search-spinner" id="opmlSubmitSpinner" style="width:14px; height:14px; display:none;"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="timerModalBackdrop">
     <div class="modal-sheet">
       <div class="modal-title">Set sleep timer</div>
@@ -2544,7 +2636,7 @@
         </button>
       </div>
 
-      <!-- Release v2.0 (CURRENT - Android Auto & Car Ecosystem) -->
+      <!-- Release v2.0 (CURRENT - Android Auto & OPML Edition) -->
       <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:2px solid var(--primary);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
           <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v2.0</span>
@@ -2552,6 +2644,7 @@
         </div>
         <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 13</div>
         <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
+          <li><strong>1-Click OPML Import & Export:</strong> Seamlessly migrate podcast subscriptions to/from Google Podcasts, Pocket Casts, Apple Podcasts, AntennaPod, or standard OPML 2.0 files. Dual-mode support for file upload and direct XML paste.</li>
           <li><strong>Full Android Auto Integration:</strong> Native car dashboard app support with <code>MediaBrowserService</code> categories for Subscriptions, Queue, Recent Episodes, and Offline Downloads.</li>
           <li><strong>Automotive GPS Ducking:</strong> Automatic volume reduction to 20% during Google Maps / Waze voice guidance with smooth recovery.</li>
           <li><strong>Incoming Call Management:</strong> Transient audio focus pause on phone calls and auto-resume on call termination.</li>
@@ -2632,11 +2725,11 @@
         </ul>
       </div>
 
-      <!-- Release v1.3 (CURRENT - Android Auto) -->
-      <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:2px solid var(--primary);">
+      <!-- Release v1.3 (Android Auto Prototype) -->
+      <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:1px solid var(--divider-light); opacity:0.95;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
           <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.3</span>
-          <span style="background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;">LATEST</span>
+          <span style="background:var(--surface); color:var(--text-secondary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid var(--divider);">BUILD 4</span>
         </div>
         <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 4</div>
         <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
@@ -2808,18 +2901,58 @@
     }
 
     const INITIAL_PODCASTS = getInitialPodcasts();
-    const DEFAULT_COVER_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300"><rect width="300" height="300" fill="#1a73e8" rx="20"/><circle cx="150" cy="130" r="60" fill="rgba(255,255,255,0.2)"/><text x="150" y="160" font-family="-apple-system, sans-serif" font-size="70" font-weight="900" fill="#ffffff" text-anchor="middle">P</text><text x="150" y="240" font-family="-apple-system, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">Podcast</text></svg>');
+    function generateFallbackCover(title) {
+      const cleanTitle = (title || 'Podcast').trim();
+      const words = cleanTitle.split(/\s+/).filter(Boolean);
+      let initials = 'P';
+      if (words.length >= 2) {
+        initials = (words[0][0] || '') + (words[1][0] || '');
+      } else if (words.length === 1 && words[0].length >= 2) {
+        initials = words[0].substring(0, 2);
+      }
+      initials = initials.toUpperCase();
+
+      const hues = [210, 260, 330, 28, 160, 195, 280, 345, 140];
+      let hash = 0;
+      for (let i = 0; i < cleanTitle.length; i++) {
+        hash = (hash * 31 + cleanTitle.charCodeAt(i)) & 0xffffffff;
+      }
+      const hue = hues[Math.abs(hash) % hues.length];
+      const h2 = (hue + 40) % 360;
+
+      const displayTitle = cleanTitle.length > 20 ? cleanTitle.substring(0, 18) + '...' : cleanTitle;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">` +
+        `<defs>` +
+        `<linearGradient id="bg_${Math.abs(hash)}" x1="0%" y1="0%" x2="100%" y2="100%">` +
+        `<stop offset="0%" stop-color="hsl(${hue}, 80%, 48%)"/>` +
+        `<stop offset="100%" stop-color="hsl(${h2}, 85%, 28%)"/>` +
+        `</linearGradient>` +
+        `</defs>` +
+        `<rect width="300" height="300" fill="url(#bg_${Math.abs(hash)})" rx="20"/>` +
+        `<circle cx="150" cy="125" r="58" fill="rgba(255,255,255,0.18)"/>` +
+        `<text x="150" y="146" font-family="-apple-system, Roboto, sans-serif" font-size="50" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">${initials}</text>` +
+        `<text x="150" y="235" font-family="-apple-system, Roboto, sans-serif" font-size="16" font-weight="700" fill="rgba(255,255,255,0.92)" text-anchor="middle">${displayTitle}</text>` +
+        `</svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    const DEFAULT_COVER_SVG = generateFallbackCover('Podcast');
 
     function setCoverArt(imgEl, src, title) {
       if (!imgEl) return;
+      const fallback = generateFallbackCover(title || 'Podcast');
       imgEl.onerror = () => {
         imgEl.onerror = null;
-        imgEl.src = DEFAULT_COVER_SVG;
+        imgEl.src = fallback;
       };
-      imgEl.src = src || DEFAULT_COVER_SVG;
+      if (!src || src.includes('unsplash') || src.startsWith('data:') || src.length < 8) {
+        imgEl.src = fallback;
+      } else {
+        imgEl.src = src;
+      }
     }
 
-        class LivePodcastAudioEngine {
+    class LivePodcastAudioEngine {
       constructor() {
         this.html5 = document.getElementById('html5Audio');
         this.isPlaying = false;
@@ -3210,6 +3343,7 @@
         this.initDOM();
         this.bindEvents();
         this.renderAll();
+        setTimeout(() => this.healMissingArtwork(), 200);
       }
 
       loadStorage() {
@@ -3799,6 +3933,332 @@
             window.AndroidBridge.saveNativePref('gp_history', data);
           }
         } catch(e) {}
+      }
+
+      escapeXml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&apos;');
+      }
+
+      openOpmlModal() {
+        const modal = this.safeEl('opmlModalBackdrop');
+        if (modal) {
+          modal.classList.add('open');
+          const textInput = this.safeEl('opmlTextInput');
+          if (textInput) textInput.value = '';
+          const fileInput = this.safeEl('opmlFileInput');
+          if (fileInput) fileInput.value = '';
+          const label = this.safeEl('opmlSelectedFileLabel');
+          if (label) { label.style.display = 'none'; label.textContent = ''; }
+          const progress = this.safeEl('opmlProgressWrap');
+          if (progress) progress.style.display = 'none';
+
+          if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.scanDownloadFolderOpml) {
+            try {
+              window.AndroidBridge.scanDownloadFolderOpml();
+            } catch(e) {}
+          }
+        }
+      }
+
+      closeOpmlModal() {
+        const modal = this.safeEl('opmlModalBackdrop');
+        if (modal) modal.classList.remove('open');
+      }
+
+      getSampleOpml() {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Sample Podcast Subscriptions</title>
+  </head>
+  <body>
+    <outline text="feeds" title="feeds">
+      <outline type="rss" text="Dan Carlin's Hardcore History" title="Dan Carlin's Hardcore History" xmlUrl="https://feeds.feedburner.com/dancarlin/history" htmlUrl="https://www.dancarlin.com" />
+      <outline type="rss" text="The Daily" title="The Daily" xmlUrl="https://feeds.simplecast.com/54nAGcIl" htmlUrl="https://www.nytimes.com/thedaily" />
+      <outline type="rss" text="Huberman Lab" title="Huberman Lab" xmlUrl="https://feeds.megaphone.fm/hubermanlab" htmlUrl="https://hubermanlab.com" />
+      <outline type="rss" text="Planet Money" title="Planet Money" xmlUrl="https://feeds.npr.org/510289/podcast.xml" htmlUrl="https://www.npr.org/planetmoney" />
+      <outline type="rss" text="Radiolab" title="Radiolab" xmlUrl="https://feeds.feedburner.com/wnyc_radiolab" htmlUrl="https://www.radiolab.org" />
+      <outline type="rss" text="TED Talks Daily" title="TED Talks Daily" xmlUrl="https://feeds.feedburner.com/tedtalks_audio" htmlUrl="https://www.ted.com" />
+    </outline>
+  </body>
+</opml>`;
+      }
+
+      exportOpml() {
+        const subscribedShows = this.shows.filter(s => s.subscribed !== false);
+        if (!subscribedShows || subscribedShows.length === 0) {
+          this.showToast('No subscribed podcasts to export');
+          return;
+        }
+
+        const now = new Date().toUTCString();
+        let opml = `<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">\n  <head>\n    <title>OpenPodcasts Subscriptions</title>\n    <dateCreated>${now}</dateCreated>\n  </head>\n  <body>\n    <outline text="feeds" title="feeds">\n`;
+
+        subscribedShows.forEach(s => {
+          const title = this.escapeXml(s.title || 'Podcast');
+          const feedUrl = this.escapeXml(s.feedUrl || '');
+          const htmlUrl = this.escapeXml(s.feedUrl || '');
+          opml += `      <outline type="rss" text="${title}" title="${title}" xmlUrl="${feedUrl}" htmlUrl="${htmlUrl}" />\n`;
+        });
+
+        opml += `    </outline>\n  </body>\n</opml>`;
+
+        if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.exportOpml) {
+          try {
+            window.AndroidBridge.exportOpml('openpodcasts_subscriptions.opml', opml);
+            this.showToast(`Exported ${subscribedShows.length} subscriptions to OPML!`);
+            return;
+          } catch(e) {
+            console.error('AndroidBridge.exportOpml error:', e);
+          }
+        }
+
+        // Browser fallback: Blob download
+        try {
+          const blob = new Blob([opml], { type: 'text/xml;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'openpodcasts_subscriptions.opml';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          this.showToast(`Exported ${subscribedShows.length} subscriptions to OPML file`);
+        } catch(e) {
+          this.showToast('Failed to export OPML');
+        }
+      }
+
+      importOpmlContent(xmlString) {
+        if (!xmlString || !xmlString.trim()) {
+          this.showToast('Please select a file or paste OPML content');
+          return;
+        }
+
+        const spinner = this.safeEl('opmlSubmitSpinner');
+        const submitText = this.safeEl('opmlSubmitText');
+        const progressWrap = this.safeEl('opmlProgressWrap');
+        const progressBar = this.safeEl('opmlProgressBar');
+        const progressText = this.safeEl('opmlProgressText');
+        const progressCount = this.safeEl('opmlProgressCount');
+
+        try {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+
+          const parseError = xmlDoc.querySelector('parsererror');
+          if (parseError) {
+            this.showToast('Invalid XML/OPML format: could not parse');
+            return;
+          }
+
+          const outlines = xmlDoc.querySelectorAll('outline');
+          const feeds = [];
+
+          outlines.forEach(node => {
+            const xmlUrl = node.getAttribute('xmlUrl') || node.getAttribute('url') || node.getAttribute('feedUrl');
+            if (xmlUrl && xmlUrl.trim().startsWith('http')) {
+              const title = node.getAttribute('text') || node.getAttribute('title') || 'Subscribed Podcast';
+              const htmlUrl = node.getAttribute('htmlUrl') || '';
+              feeds.push({
+                title: title.trim(),
+                feedUrl: xmlUrl.trim(),
+                htmlUrl: htmlUrl.trim()
+              });
+            }
+          });
+
+          // Deduplicate feeds by feedUrl
+          const uniqueFeeds = [];
+          const seen = new Set();
+          feeds.forEach(f => {
+            const key = f.feedUrl.toLowerCase();
+            if (!seen.has(key)) {
+              seen.add(key);
+              uniqueFeeds.push(f);
+            }
+          });
+
+          if (uniqueFeeds.length === 0) {
+            this.showToast('No podcast RSS feeds found in OPML file');
+            return;
+          }
+
+          if (spinner) spinner.style.display = 'inline-block';
+          if (submitText) submitText.textContent = 'Importing...';
+          if (progressWrap) progressWrap.style.display = 'block';
+
+          let newlyAddedCount = 0;
+          let alreadySubscribedCount = 0;
+
+          uniqueFeeds.forEach((feed, idx) => {
+            // Update progress bar
+            const pct = Math.round(((idx + 1) / uniqueFeeds.length) * 100);
+            if (progressBar) progressBar.style.width = `${pct}%`;
+            if (progressCount) progressCount.textContent = `${idx + 1} / ${uniqueFeeds.length}`;
+            if (progressText) progressText.textContent = `Importing "${feed.title}"...`;
+
+            // Check if already in this.shows
+            const existing = this.shows.find(s => 
+              (s.feedUrl && s.feedUrl.toLowerCase() === feed.feedUrl.toLowerCase()) ||
+              (s.title && s.title.toLowerCase() === feed.title.toLowerCase())
+            );
+
+            if (existing) {
+              if (existing.subscribed) {
+                alreadySubscribedCount++;
+              } else {
+                existing.subscribed = true;
+                newlyAddedCount++;
+              }
+              if (!existing.artwork || existing.artwork.includes('unsplash') || existing.artwork.length < 10 || existing.author === 'OPML Subscription') {
+                this.resolveShowMetadata(existing);
+              }
+            } else {
+              // Create new podcast item
+              const hash = Math.abs(feed.feedUrl.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0));
+              const newShow = {
+                id: 'opml-' + hash,
+                title: feed.title,
+                author: 'Podcast',
+                description: `Imported via OPML (${feed.feedUrl})`,
+                artwork: '',
+                feedUrl: feed.feedUrl,
+                category: 'Imported',
+                subscribed: true,
+                newCount: 0,
+                episodes: []
+              };
+              this.shows.unshift(newShow);
+              newlyAddedCount++;
+              this.resolveShowMetadata(newShow);
+            }
+          });
+
+          // Save state to localStorage and native SharedPreferences
+          this.saveShowsOrder();
+          this.saveSubscriptions();
+          this.renderAll();
+
+          setTimeout(() => {
+            if (spinner) spinner.style.display = 'none';
+            if (submitText) submitText.textContent = 'Import Subscriptions';
+            this.closeOpmlModal();
+            this.showToast(`Imported ${newlyAddedCount} shows from OPML (${alreadySubscribedCount} already subscribed)`);
+          }, 450);
+
+        } catch (err) {
+          console.error('Error importing OPML:', err);
+          if (spinner) spinner.style.display = 'none';
+          if (submitText) submitText.textContent = 'Import Subscriptions';
+          this.showToast('Failed to parse OPML file');
+        }
+      }
+
+      healMissingArtwork() {
+        if (!this.shows || !Array.isArray(this.shows)) return;
+        this.shows.forEach((show, idx) => {
+          const isMissing = !show.artwork ||
+            show.artwork.includes('unsplash') ||
+            show.artwork.startsWith('data:') ||
+            show.artwork.length < 10 ||
+            show.author === 'OPML Subscription';
+          if (isMissing) {
+            setTimeout(() => {
+              this.resolveShowMetadata(show);
+            }, idx * 100);
+          }
+        });
+      }
+
+      resolveShowMetadata(show) {
+        if (!show || !show.id) return;
+
+        // 1. Native Android Bridge
+        if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.resolvePodcastMetadata) {
+          try {
+            window.AndroidBridge.resolvePodcastMetadata(show.id, show.title || '', show.feedUrl || '');
+            return;
+          } catch(e) {
+            console.warn('Native resolvePodcastMetadata failed:', e);
+          }
+        }
+
+        // 2. Client-side fetch fallback
+        if (typeof fetch !== 'undefined' && show.title) {
+          const q = encodeURIComponent(show.title);
+          fetch(`https://itunes.apple.com/search?term=${q}&media=podcast&limit=3`)
+            .then(r => r.json())
+            .then(data => {
+              if (data && data.results && data.results.length > 0) {
+                let chosen = data.results[0];
+                if (show.feedUrl) {
+                  for (let item of data.results) {
+                    if (item.feedUrl && item.feedUrl.toLowerCase() === show.feedUrl.toLowerCase()) {
+                      chosen = item;
+                      break;
+                    }
+                  }
+                }
+                const art = chosen.artworkUrl600 || chosen.artworkUrl100 || '';
+                const author = chosen.artistName || '';
+                const genre = chosen.primaryGenreName || '';
+                this.applyResolvedMetadata(show.id, art, author, '', genre);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+
+      applyResolvedMetadata(podcastId, artworkUrl, author, description, genre) {
+        const show = this.shows.find(s => s.id === podcastId || (s.feedUrl && s.feedUrl === podcastId) || s.title === podcastId);
+        if (!show) return;
+
+        let changed = false;
+        if (artworkUrl && artworkUrl.startsWith('http') && show.artwork !== artworkUrl) {
+          show.artwork = artworkUrl;
+          changed = true;
+        }
+        if (author && (show.author === 'OPML Subscription' || !show.author || show.author === 'Podcast' || show.author === 'Various')) {
+          show.author = author;
+          changed = true;
+        }
+        if (genre && (!show.category || show.category === 'Imported')) {
+          show.category = genre;
+          changed = true;
+        }
+
+        if (changed) {
+          this.saveSubscriptions();
+          this.saveShowsOrder();
+
+          // Immediately update any visible DOM cards
+          const cards = document.querySelectorAll('.sub-card');
+          cards.forEach(card => {
+            const titleEl = card.querySelector('.sub-card-title');
+            if (titleEl && titleEl.textContent === show.title) {
+              const img = card.querySelector('.sub-card-art');
+              if (img && artworkUrl) setCoverArt(img, artworkUrl, show.title);
+              const authorEl = card.querySelector('.sub-card-author');
+              if (authorEl && author) authorEl.textContent = author;
+            }
+          });
+
+          // Also update detail view if open on this show
+          if (this.currentShow && (this.currentShow.id === show.id || this.currentShow.title === show.title)) {
+            const dArt = this.safeEl('detailArt');
+            if (dArt && artworkUrl) setCoverArt(dArt, artworkUrl, show.title);
+            const dAuth = this.safeEl('detailAuthor');
+            if (dAuth && author) dAuth.textContent = author;
+          }
+        }
       }
 
       addToHistory(ep, show) {
@@ -5422,6 +5882,154 @@
         if (submitRssBtn && rssInput) {
           submitRssBtn.onclick = () => {
             this.subscribeCustomRss(rssInput.value.trim());
+          };
+        }
+
+        // OPML Import & Export Event Listeners
+        const importBtn = this.safeEl('importOpmlBtn');
+        const homeImportBtn = this.safeEl('homeImportOpmlBtn');
+        const emptyImportBtn = this.safeEl('emptyImportOpmlBtn');
+        const exportBtn = this.safeEl('exportOpmlBtn');
+        const homeExportBtn = this.safeEl('homeExportOpmlBtn');
+
+        const opmlModal = this.safeEl('opmlModalBackdrop');
+        const closeOpmlBtn = this.safeEl('closeOpmlModalBtn');
+        const cancelOpmlBtn = this.safeEl('cancelOpmlModalBtn');
+        const submitOpmlBtn = this.safeEl('submitOpmlModalBtn');
+        const opmlDropzone = this.safeEl('opmlDropzone');
+        const opmlFileInput = this.safeEl('opmlFileInput');
+        const opmlTextInput = this.safeEl('opmlTextInput');
+        const opmlFileLabel = this.safeEl('opmlSelectedFileLabel');
+        const sampleOpmlBtn = this.safeEl('sampleOpmlBtn');
+
+        if (importBtn) importBtn.onclick = () => this.openOpmlModal();
+        if (homeImportBtn) homeImportBtn.onclick = () => this.openOpmlModal();
+        if (emptyImportBtn) emptyImportBtn.onclick = () => this.openOpmlModal();
+        if (exportBtn) exportBtn.onclick = () => this.exportOpml();
+        if (homeExportBtn) homeExportBtn.onclick = () => this.exportOpml();
+
+        if (closeOpmlBtn) closeOpmlBtn.onclick = () => this.closeOpmlModal();
+        if (cancelOpmlBtn) cancelOpmlBtn.onclick = () => this.closeOpmlModal();
+        if (opmlModal) {
+          opmlModal.onclick = (e) => {
+            if (e.target.id === 'opmlModalBackdrop') this.closeOpmlModal();
+          };
+        }
+
+        if (opmlDropzone) {
+          opmlDropzone.onclick = () => {
+            if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.pickOpmlFile) {
+              window.AndroidBridge.pickOpmlFile();
+            } else if (opmlFileInput) {
+              opmlFileInput.click();
+            }
+          };
+        }
+
+        if (opmlFileInput) {
+          opmlFileInput.onchange = (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file) {
+              if (opmlFileLabel) {
+                opmlFileLabel.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                opmlFileLabel.style.display = 'block';
+              }
+              const reader = new FileReader();
+              reader.onload = (re) => {
+                const text = re.target.result;
+                if (opmlTextInput) opmlTextInput.value = text;
+              };
+              reader.readAsText(file);
+            }
+          };
+        }
+
+        const opmlRescanBtn = this.safeEl('opmlRescanBtn');
+        if (opmlRescanBtn) {
+          opmlRescanBtn.onclick = () => {
+            if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.scanDownloadFolderOpml) {
+              window.AndroidBridge.scanDownloadFolderOpml();
+              this.showToast('Scanning Downloads folder...');
+            }
+          };
+        }
+
+        window.onOpmlFilePicked = (filename, content) => {
+          if (opmlFileLabel) {
+            opmlFileLabel.textContent = `Selected: ${filename}`;
+            opmlFileLabel.style.display = 'block';
+          }
+          if (opmlTextInput) {
+            opmlTextInput.value = content;
+          }
+          this.showToast(`Loaded ${filename}`);
+          // Auto-trigger import directly
+          this.importOpmlContent(content);
+        };
+
+        window.onOpmlError = (msg) => {
+          this.showToast(msg || 'Error accessing file');
+        };
+
+        window.onDownloadsOpmlList = (jsonStr) => {
+          try {
+            const list = JSON.parse(jsonStr || '[]');
+            const wrap = this.safeEl('opmlDownloadsSection');
+            const container = this.safeEl('opmlDownloadsList');
+            if (!wrap || !container) return;
+
+            if (list.length === 0) {
+              wrap.style.display = 'none';
+              return;
+            }
+
+            wrap.style.display = 'block';
+            container.innerHTML = '';
+            list.forEach(file => {
+              const itemEl = document.createElement('div');
+              itemEl.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:var(--surface); border:1px solid var(--divider-light); border-radius:8px; padding:8px 12px;';
+              
+              const sizeKb = (file.size / 1024).toFixed(1);
+              itemEl.innerHTML = `
+                <div style="min-width:0; flex:1; margin-right:8px;">
+                  <div style="font-size:13px; font-weight:600; color:var(--text-primary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">📄 ${file.name}</div>
+                  <div style="font-size:11px; color:var(--text-secondary);">${sizeKb} KB · Downloads</div>
+                </div>
+                <button class="manage-action-pill" style="background:var(--primary); color:#fff; font-weight:600; font-size:11.5px; padding:4px 10px; border-radius:12px; border:none; cursor:pointer;">Import</button>
+              `;
+
+              const loadBtn = itemEl.querySelector('button');
+              loadBtn.onclick = () => {
+                if (window.AndroidBridge && window.AndroidBridge.loadOpmlFilePath) {
+                  window.AndroidBridge.loadOpmlFilePath(file.path);
+                  this.showToast(`Loading ${file.name}...`);
+                }
+              };
+
+              container.appendChild(itemEl);
+            });
+          } catch(e) {
+            console.error('onDownloadsOpmlList error:', e);
+          }
+        };
+
+        window.onPodcastMetadataResolved = (podcastId, artwork, author, desc, genre) => {
+          this.applyResolvedMetadata(podcastId, artwork, author, desc, genre);
+        };
+
+        if (sampleOpmlBtn && opmlTextInput) {
+          sampleOpmlBtn.onclick = () => {
+            opmlTextInput.value = this.getSampleOpml();
+            if (opmlFileLabel) {
+              opmlFileLabel.textContent = 'Loaded sample OPML feeds (6 verified shows)';
+              opmlFileLabel.style.display = 'block';
+            }
+          };
+        }
+
+        if (submitOpmlBtn && opmlTextInput) {
+          submitOpmlBtn.onclick = () => {
+            this.importOpmlContent(opmlTextInput.value);
           };
         }
 

@@ -33,6 +33,11 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
+import android.net.Uri;
+import android.webkit.ValueCallback;
+import android.provider.OpenableColumns;
+import android.database.Cursor;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -47,6 +52,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private ValueCallback<Uri[]> filePathCallback;
+    private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
+    private static final int OPML_PICKER_REQUEST_CODE = 1002;
     private MediaPlayer mediaPlayer;
     private LoudnessEnhancer loudnessEnhancer;
     private boolean isVoiceBoostEnabled = false;
@@ -121,6 +129,34 @@ public class MainActivity extends Activity {
                     + consoleMessage.lineNumber() + " of " + consoleMessage.sourceId());
                 return true;
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                if (MainActivity.this.filePathCallback != null) {
+                    MainActivity.this.filePathCallback.onReceiveValue(null);
+                }
+                MainActivity.this.filePathCallback = filePathCallback;
+
+                Intent intent = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && fileChooserParams != null) {
+                    try {
+                        intent = fileChooserParams.createIntent();
+                    } catch (Exception ignored) {}
+                }
+                if (intent == null) {
+                    intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                }
+                try {
+                    startActivityForResult(Intent.createChooser(intent, "Choose OPML or XML File"), FILE_CHOOSER_REQUEST_CODE);
+                    return true;
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "Error launching file chooser: " + e.getMessage());
+                    MainActivity.this.filePathCallback = null;
+                    return false;
+                }
+            }
         });
         webView.setBackgroundColor(Color.parseColor("#FFFFFF"));
 
@@ -130,9 +166,17 @@ public class MainActivity extends Activity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String js = intent.getStringExtra("js");
+                String b64 = intent.getStringExtra("b64");
+                if (b64 != null) {
+                    try {
+                        byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                        js = new String(decoded, "UTF-8");
+                    } catch (Exception ignored) {}
+                }
                 if (js != null && webView != null) {
+                    final String code = js;
                     runOnUiThread(() -> {
-                        if (webView != null) webView.evaluateJavascript(js, null);
+                        if (webView != null) webView.evaluateJavascript(code, null);
                     });
                 }
             }
@@ -164,6 +208,92 @@ public class MainActivity extends Activity {
         }
 
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+            if (filePathCallback != null) {
+                Uri[] results = null;
+                if (resultCode == Activity.RESULT_OK && data != null) {
+                    String dataString = data.getDataString();
+                    android.content.ClipData clipData = data.getClipData();
+                    if (clipData != null) {
+                        results = new Uri[clipData.getItemCount()];
+                        for (int i = 0; i < clipData.getItemCount(); i++) {
+                            results[i] = clipData.getItemAt(i).getUri();
+                        }
+                    } else if (dataString != null) {
+                        results = new Uri[]{ Uri.parse(dataString) };
+                    } else if (data.getData() != null) {
+                        results = new Uri[]{ data.getData() };
+                    }
+                }
+                filePathCallback.onReceiveValue(results);
+                filePathCallback = null;
+            }
+        } else if (requestCode == OPML_PICKER_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                Uri uri = data.getData();
+                if (uri != null) {
+                    readAndDeliverOpmlUri(uri);
+                }
+            }
+        }
+    }
+
+    private void readAndDeliverOpmlUri(Uri uri) {
+        new Thread(() -> {
+            try {
+                String displayName = "subscriptions.opml";
+                Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+                if (cursor != null) {
+                    try {
+                        if (cursor.moveToFirst()) {
+                            int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                            if (nameIndex != -1) {
+                                displayName = cursor.getString(nameIndex);
+                            }
+                        }
+                    } finally {
+                        cursor.close();
+                    }
+                }
+
+                InputStream is = getContentResolver().openInputStream(uri);
+                if (is != null) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    reader.close();
+                    is.close();
+
+                    final String finalName = displayName;
+                    final String content = sb.toString();
+                    final String jsonContent = JSONObject.quote(content);
+                    final String jsonName = JSONObject.quote(finalName);
+
+                    runOnUiThread(() -> {
+                        if (webView != null) {
+                            webView.evaluateJavascript("if(window.onOpmlFilePicked) window.onOpmlFilePicked(" + jsonName + ", " + jsonContent + ");", null);
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                Log.e("OpenPodcastsApp", "Error reading OPML URI: " + e.getMessage());
+                final String errMsg = JSONObject.quote(e.getMessage() != null ? e.getMessage() : "Error reading file");
+                runOnUiThread(() -> {
+                    if (webView != null) {
+                        webView.evaluateJavascript("if(window.onOpmlError) window.onOpmlError(" + errMsg + ");", null);
+                    }
+                });
+            }
+        }).start();
     }
 
     private void initMediaPlayer() {
@@ -425,6 +555,266 @@ public class MainActivity extends Activity {
                     startActivity(chooser);
                 } catch (Exception e) {
                     Log.e("OpenPodcastsApp", "shareEpisode error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void exportOpml(String filename, String opmlContent) {
+            runOnUiThread(() -> {
+                try {
+                    Intent sendIntent = new Intent(Intent.ACTION_SEND);
+                    sendIntent.setType("text/xml");
+                    sendIntent.putExtra(Intent.EXTRA_SUBJECT, "OpenPodcasts Subscriptions Backup");
+                    sendIntent.putExtra(Intent.EXTRA_TEXT, opmlContent);
+
+                    // Also try saving to public Downloads directory
+                    try {
+                        java.io.File downloadDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                        if (downloadDir != null && (downloadDir.exists() || downloadDir.mkdirs())) {
+                            java.io.File file = new java.io.File(downloadDir, filename != null && !filename.isEmpty() ? filename : "openpodcasts_subscriptions.opml");
+                            java.io.FileWriter writer = new java.io.FileWriter(file);
+                            writer.write(opmlContent);
+                            writer.close();
+                            Log.i("OpenPodcastsApp", "OPML saved to Downloads: " + file.getAbsolutePath());
+                        }
+                    } catch (Exception err) {
+                        Log.w("OpenPodcastsApp", "Could not write OPML to Downloads: " + err.getMessage());
+                    }
+
+                    Intent chooser = Intent.createChooser(sendIntent, "Export OPML Subscriptions");
+                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(chooser);
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "exportOpml error: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void pickOpmlFile() {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    String[] mimeTypes = new String[]{
+                        "text/xml",
+                        "text/plain",
+                        "application/xml",
+                        "application/x-opml+xml",
+                        "text/x-opml",
+                        "*/*"
+                    };
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+                    startActivityForResult(Intent.createChooser(intent, "Choose OPML File"), OPML_PICKER_REQUEST_CODE);
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "pickOpmlFile error: " + e.getMessage());
+                    try {
+                        Intent fallbackIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                        fallbackIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                        fallbackIntent.setType("*/*");
+                        startActivityForResult(Intent.createChooser(fallbackIntent, "Choose OPML File"), OPML_PICKER_REQUEST_CODE);
+                    } catch (Exception e2) {
+                        Log.e("OpenPodcastsApp", "Fallback picker error: " + e2.getMessage());
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void scanDownloadFolderOpml() {
+            new Thread(() -> {
+                JSONArray foundFiles = new JSONArray();
+                try {
+                    java.io.File[] dirs = new java.io.File[]{
+                        android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
+                        new java.io.File("/sdcard/Download")
+                    };
+                    java.util.HashSet<String> seen = new java.util.HashSet<>();
+                    for (java.io.File dir : dirs) {
+                        if (dir != null && dir.exists() && dir.isDirectory()) {
+                            java.io.File[] list = dir.listFiles();
+                            if (list != null) {
+                                for (java.io.File f : list) {
+                                    if (f.isFile() && (f.getName().toLowerCase().endsWith(".opml") || f.getName().toLowerCase().endsWith(".xml"))) {
+                                        if (!seen.contains(f.getAbsolutePath())) {
+                                            seen.add(f.getAbsolutePath());
+                                            JSONObject item = new JSONObject();
+                                            item.put("name", f.getName());
+                                            item.put("path", f.getAbsolutePath());
+                                            item.put("size", f.length());
+                                            item.put("modified", f.lastModified());
+                                            foundFiles.put(item);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "scanDownloadFolderOpml error: " + e.getMessage());
+                }
+
+                final String jsonStr = JSONObject.quote(foundFiles.toString());
+                runOnUiThread(() -> {
+                    if (webView != null) {
+                        webView.evaluateJavascript("if(window.onDownloadsOpmlList) window.onDownloadsOpmlList(" + jsonStr + ");", null);
+                    }
+                });
+            }).start();
+        }
+
+        @JavascriptInterface
+        public void loadOpmlFilePath(String filePath) {
+            new Thread(() -> {
+                try {
+                    java.io.File file = new java.io.File(filePath);
+                    if (file.exists() && file.canRead()) {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(new java.io.FileInputStream(file), "UTF-8"));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line).append("\n");
+                        }
+                        reader.close();
+
+                        final String name = file.getName();
+                        final String content = sb.toString();
+                        final String jsonContent = JSONObject.quote(content);
+                        final String jsonName = JSONObject.quote(name);
+                        runOnUiThread(() -> {
+                            if (webView != null) {
+                                webView.evaluateJavascript("if(window.onOpmlFilePicked) window.onOpmlFilePicked(" + jsonName + ", " + jsonContent + ");", null);
+                            }
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.e("OpenPodcastsApp", "loadOpmlFilePath error: " + e.getMessage());
+                }
+            }).start();
+        }
+
+        @JavascriptInterface
+        public void resolvePodcastMetadata(String podcastId, String title, String feedUrl) {
+            networkExecutor.execute(() -> {
+                String artwork = "";
+                String author = "";
+                String description = "";
+                String genre = "";
+
+                // 1. Search iTunes directory for high-res 600x600 artwork and official metadata
+                if (title != null && !title.trim().isEmpty()) {
+                    HttpURLConnection searchConn = null;
+                    try {
+                        String cleanTitle = title.trim();
+                        String encoded = URLEncoder.encode(cleanTitle, "UTF-8");
+                        String searchUrl = "https://itunes.apple.com/search?term=" + encoded + "&media=podcast&limit=4";
+                        URL url = new URL(searchUrl);
+                        searchConn = (HttpURLConnection) url.openConnection();
+                        searchConn.setRequestMethod("GET");
+                        searchConn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                        searchConn.setConnectTimeout(6000);
+                        searchConn.setReadTimeout(6000);
+
+                        BufferedReader in = new BufferedReader(new InputStreamReader(searchConn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = in.readLine()) != null) {
+                            sb.append(line);
+                        }
+                        in.close();
+
+                        JSONObject json = new JSONObject(sb.toString());
+                        JSONArray results = json.optJSONArray("results");
+                        if (results != null && results.length() > 0) {
+                            JSONObject chosen = results.getJSONObject(0);
+                            if (feedUrl != null && !feedUrl.isEmpty()) {
+                                for (int i = 0; i < results.length(); i++) {
+                                    JSONObject item = results.getJSONObject(i);
+                                    if (feedUrl.equalsIgnoreCase(item.optString("feedUrl", ""))) {
+                                        chosen = item;
+                                        break;
+                                    }
+                                }
+                            }
+                            artwork = chosen.optString("artworkUrl600", "");
+                            if (artwork.isEmpty()) artwork = chosen.optString("artworkUrl100", "");
+                            author = chosen.optString("artistName", "");
+                            genre = chosen.optString("primaryGenreName", "");
+                        }
+                    } catch (Exception e) {
+                        Log.w("OpenPodcastsApp", "resolvePodcastMetadata iTunes error: " + e.getMessage());
+                    } finally {
+                        if (searchConn != null) try { searchConn.disconnect(); } catch (Exception ignored) {}
+                    }
+                }
+
+                // 2. If artwork still missing, fetch the RSS XML feed directly
+                if (artwork.isEmpty() && feedUrl != null && feedUrl.startsWith("http")) {
+                    HttpURLConnection feedConn = null;
+                    try {
+                        URL fUrl = new URL(feedUrl);
+                        feedConn = (HttpURLConnection) fUrl.openConnection();
+                        feedConn.setRequestMethod("GET");
+                        feedConn.setRequestProperty("User-Agent", "Mozilla/5.0 OpenPodcasts/1.0");
+                        feedConn.setConnectTimeout(7000);
+                        feedConn.setReadTimeout(7000);
+
+                        InputStream in = feedConn.getInputStream();
+                        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                        dbFactory.setNamespaceAware(true);
+                        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                        Document doc = dBuilder.parse(in);
+                        in.close();
+                        doc.getDocumentElement().normalize();
+
+                        NodeList channels = doc.getElementsByTagName("channel");
+                        Element channelEl = channels.getLength() > 0 ? (Element) channels.item(0) : doc.getDocumentElement();
+
+                        if (author.isEmpty()) {
+                            author = getElementText(channelEl, "itunes:author", "");
+                            if (author.isEmpty()) author = getElementText(channelEl, "author", "");
+                        }
+                        if (description.isEmpty()) {
+                            description = getElementText(channelEl, "description", "");
+                        }
+
+                        NodeList imgList = channelEl.getElementsByTagName("itunes:image");
+                        if (imgList.getLength() > 0) {
+                            artwork = ((Element) imgList.item(0)).getAttribute("href");
+                        }
+                        if (artwork.isEmpty()) {
+                            NodeList stdImg = channelEl.getElementsByTagName("image");
+                            if (stdImg.getLength() > 0) {
+                                artwork = getElementText((Element) stdImg.item(0), "url", "");
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.w("OpenPodcastsApp", "resolvePodcastMetadata RSS fetch error: " + e.getMessage());
+                    } finally {
+                        if (feedConn != null) try { feedConn.disconnect(); } catch (Exception ignored) {}
+                    }
+                }
+
+                if (!artwork.isEmpty() || !author.isEmpty()) {
+                    final String fArtwork = artwork;
+                    final String fAuthor = author;
+                    final String fDesc = description;
+                    final String fGenre = genre;
+                    final String fPodId = podcastId;
+                    runOnUiThread(() -> {
+                        if (webView != null) {
+                            String js = String.format("if(window.onPodcastMetadataResolved) window.onPodcastMetadataResolved(%s, %s, %s, %s, %s);",
+                                JSONObject.quote(fPodId),
+                                JSONObject.quote(fArtwork),
+                                JSONObject.quote(fAuthor),
+                                JSONObject.quote(fDesc),
+                                JSONObject.quote(fGenre)
+                            );
+                            webView.evaluateJavascript(js, null);
+                        }
+                    });
                 }
             });
         }

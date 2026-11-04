@@ -37,6 +37,11 @@ serve_forever.py
 bin/
 *.ps1
 !build_and_deploy.ps1
+cloudflared*
+tunnel_url.txt
+add_web_banner.py
+run_cf_quick.py
+start_tunnel_service.py
 
 # Local images & screenshots
 *.png
