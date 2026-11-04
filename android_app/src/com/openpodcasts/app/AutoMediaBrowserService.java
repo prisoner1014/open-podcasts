@@ -12,6 +12,8 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaDescription;
 import android.media.MediaMetadata;
 import android.media.MediaPlayer;
@@ -84,6 +86,52 @@ public class AutoMediaBrowserService extends MediaBrowserService {
     private JSONObject currentEpisode = null;
     private String currentPodcastTitle = "Podcasts";
     private boolean isPrepared = false;
+    private boolean resumeOnFocusGain = false;
+
+    private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+
+    private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            switch (focusChange) {
+                case AudioManager.AUDIOFOCUS_LOSS:
+                    resumeOnFocusGain = false;
+                    pauseAudio();
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                    if (mediaPlayer != null && isPrepared && mediaPlayer.isPlaying()) {
+                        resumeOnFocusGain = true;
+                        pauseAudio();
+                    }
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                    if (mediaPlayer != null && isPrepared && mediaPlayer.isPlaying()) {
+                        mediaPlayer.setVolume(0.2f, 0.2f);
+                    }
+                    break;
+                case AudioManager.AUDIOFOCUS_GAIN:
+                    if (mediaPlayer != null && isPrepared) {
+                        mediaPlayer.setVolume(1.0f, 1.0f);
+                        if (resumeOnFocusGain) {
+                            resumeOnFocusGain = false;
+                            resumeAudio();
+                        }
+                    }
+                    break;
+            }
+        }
+    };
+
+    private final BroadcastReceiver noisyAudioReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                Log.i(TAG, "Audio becoming noisy (car disconnect / headphones unplugged), pausing playback");
+                pauseAudio();
+            }
+        }
+    };
 
     private BroadcastReceiver uiSyncReceiver = new BroadcastReceiver() {
         @Override
@@ -147,6 +195,10 @@ public class AutoMediaBrowserService extends MediaBrowserService {
             @Override
             public void onPrepared(MediaPlayer mp) {
                 isPrepared = true;
+                if (!requestAudioFocus()) {
+                    Log.w(TAG, "Audio focus request rejected on onPrepared");
+                    return;
+                }
                 mp.start();
                 long duration = mp.getDuration();
                 updatePlaybackState(PlaybackState.STATE_PLAYING, 0, 1.0f);
@@ -209,6 +261,10 @@ public class AutoMediaBrowserService extends MediaBrowserService {
         updatePlaybackState(PlaybackState.STATE_NONE, 0, 1.0f);
         mediaSession.setActive(true);
 
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        IntentFilter noisyFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        registerReceiver(noisyAudioReceiver, noisyFilter);
+
         IntentFilter filter = new IntentFilter(ACTION_SYNC_FROM_UI);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(uiSyncReceiver, filter, Context.RECEIVER_EXPORTED);
@@ -249,6 +305,11 @@ public class AutoMediaBrowserService extends MediaBrowserService {
         try {
             unregisterReceiver(uiSyncReceiver);
         } catch (Exception ignored) {}
+        try {
+            unregisterReceiver(noisyAudioReceiver);
+        } catch (Exception ignored) {}
+
+        abandonAudioFocus();
 
         if (mediaPlayer != null) {
             try {
@@ -281,7 +342,10 @@ public class AutoMediaBrowserService extends MediaBrowserService {
     @Override
     public BrowserRoot onGetRoot(String clientPackageName, int clientUid, Bundle rootHints) {
         Log.i(TAG, "onGetRoot called by: " + clientPackageName);
-        return new BrowserRoot(MEDIA_ROOT_ID, null);
+        Bundle extras = new Bundle();
+        extras.putBoolean("android.service.media.extra.OFFLINE", true);
+        extras.putBoolean("android.service.media.extra.RECENT", true);
+        return new BrowserRoot(MEDIA_ROOT_ID, extras);
     }
 
     @Override
@@ -614,6 +678,10 @@ public class AutoMediaBrowserService extends MediaBrowserService {
 
     private void resumeAudio() {
         if (mediaPlayer != null && isPrepared) {
+            if (!requestAudioFocus()) {
+                Log.w(TAG, "Audio focus request rejected on resume");
+                return;
+            }
             mediaPlayer.start();
             long pos = mediaPlayer.getCurrentPosition();
             updatePlaybackState(PlaybackState.STATE_PLAYING, pos, 1.0f);
@@ -636,6 +704,7 @@ public class AutoMediaBrowserService extends MediaBrowserService {
             updatePlaybackState(PlaybackState.STATE_PAUSED, pos, 1.0f);
             handler.removeCallbacks(progressRunnable);
             stopForeground(false);
+            abandonAudioFocus();
 
             String title = currentEpisode != null ? currentEpisode.optString("title", "Episode") : "Episode";
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -700,9 +769,51 @@ public class AutoMediaBrowserService extends MediaBrowserService {
             } catch (Exception ignored) {}
             isPrepared = false;
         }
+        abandonAudioFocus();
         updatePlaybackState(PlaybackState.STATE_STOPPED, 0, 1.0f);
         handler.removeCallbacks(progressRunnable);
         stopForeground(true);
+    }
+
+    private boolean requestAudioFocus() {
+        if (audioManager == null) {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        }
+        if (audioManager == null) return true;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest == null) {
+                AudioAttributes playbackAttrs = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build();
+                audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(playbackAttrs)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener, handler)
+                    .build();
+            }
+            int res = audioManager.requestAudioFocus(audioFocusRequest);
+            return res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        } else {
+            int res = audioManager.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            );
+            return res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        }
+    }
+
+    private void abandonAudioFocus() {
+        if (audioManager == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            }
+        } else {
+            audioManager.abandonAudioFocus(audioFocusChangeListener);
+        }
     }
 
     private void updatePlaybackState(int state, long position, float speed) {

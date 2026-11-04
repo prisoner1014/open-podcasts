@@ -2039,7 +2039,7 @@
           <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
         </svg>
       </button>
-      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v1.9</button>
+      <button class="version-pill-btn" id="headerVersionBtn" title="Version History">v2.0</button>
       <button class="icon-button" id="headerSearchBtn" title="Search">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       </button>
@@ -2172,10 +2172,10 @@
         <div class="explore-grid" id="manageSubsGrid"></div>
         <div class="version-banner-card" id="activityVersionCard" style="margin-top:24px; padding:14px 16px; background:var(--surface-variant); border-radius:var(--radius-md); display:flex; align-items:center; justify-content:space-between; cursor:pointer; border:1px solid var(--divider-light);">
           <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:36px; height:36px; border-radius:50%; background:var(--primary-container); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">v1.4</div>
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--primary-container); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">v2.0</div>
             <div>
-              <div style="font-size:14px; font-weight:600; color:var(--text-primary);">Podcasts v1.3</div>
-              <div style="font-size:12px; color:var(--text-secondary);">Tap to view Version History & changelog</div>
+              <div style="font-size:14px; font-weight:600; color:var(--text-primary);">OpenPodcasts v2.0</div>
+              <div style="font-size:12px; color:var(--text-secondary);">Android Auto Edition • Tap to view changelog</div>
             </div>
           </div>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color:var(--text-secondary);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
@@ -2537,18 +2537,34 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <div>
           <div class="modal-title" style="margin-bottom:2px; font-size:18px;">Version History</div>
-          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v1.9 • Current Release</div>
+          <div style="font-size:13px; color:var(--primary); font-weight:600;">OpenPodcasts v2.0 • Current Release</div>
         </div>
         <button class="icon-button" id="closeVersionModalBtn" style="width:36px; height:36px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
       </div>
 
-      <!-- Release v1.9 (CURRENT - Full Episode History & Live Feeds) -->
+      <!-- Release v2.0 (CURRENT - Android Auto & Car Ecosystem) -->
       <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:2px solid var(--primary);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.9</span>
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v2.0</span>
           <span style="background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;">LATEST</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 13</div>
+        <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">
+          <li><strong>Full Android Auto Integration:</strong> Native car dashboard app support with <code>MediaBrowserService</code> categories for Subscriptions, Queue, Recent Episodes, and Offline Downloads.</li>
+          <li><strong>Automotive GPS Ducking:</strong> Automatic volume reduction to 20% during Google Maps / Waze voice guidance with smooth recovery.</li>
+          <li><strong>Incoming Call Management:</strong> Transient audio focus pause on phone calls and auto-resume on call termination.</li>
+          <li><strong>Audio Disconnect Protection:</strong> Immediate pause on <code>ACTION_AUDIO_BECOMING_NOISY</code> when disconnecting USB or car Bluetooth.</li>
+          <li><strong>Steering Wheel Controls:</strong> Full support for steering wheel media keys (Play, Pause, Fast-Forward 30s, Rewind 10s).</li>
+        </ul>
+      </div>
+
+      <!-- Release v1.9 (Full Episode History & Live Feeds) -->
+      <div style="background:var(--surface-variant); padding:16px; border-radius:var(--radius-md); margin-bottom:14px; border:1px solid var(--divider-light); opacity:0.95;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-size:15px; font-weight:700; color:var(--text-primary);">Release v1.9</span>
+          <span style="background:var(--surface); color:var(--text-secondary); font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; border:1px solid var(--divider);">BUILD 12</span>
         </div>
         <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">November 2026 • Build 12</div>
         <ul style="padding-left:18px; font-size:13px; color:var(--text-primary); line-height:1.7;">

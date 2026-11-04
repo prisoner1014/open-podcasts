@@ -66,19 +66,41 @@ if ($LASTEXITCODE -ne 0) { throw "apksigner failed" }
 Copy-Item $final_apk "$ARTIFACT_DIR\OpenPodcasts.apk" -Force
 Write-Host "[+] APK built successfully: $final_apk"
 
-Write-Host "[*] 8. Installing APK on phone ($DEVICE_TARGET)..."
-& $ADB -s RFGL705LSPK install -r -d $final_apk
-if ($LASTEXITCODE -ne 0) { throw "adb install failed" }
+Write-Host "[*] 8. Checking for connected devices..."
+$devicesRaw = & $ADB devices
+$detectedId = $null
+foreach ($line in $devicesRaw) {
+    if ($line -match "^\s*([^\s]+)\s+device$") {
+        $found = $matches[1]
+        if ($found -eq "RFGL705LSPK") {
+            $detectedId = $found
+            break
+        } elseif (-not $detectedId) {
+            $detectedId = $found
+        }
+    }
+}
 
-Write-Host "[*] 9. Launching MainActivity..."
-& $ADB -s RFGL705LSPK shell am start -S -n com.openpodcasts.app/.MainActivity
-Start-Sleep -Seconds 3
+if ($detectedId) {
+    Write-Host "[*] Installing APK to device: $detectedId..."
+    & $ADB -s $detectedId install -r -d $final_apk
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[*] 9. Launching MainActivity on $detectedId..."
+        & $ADB -s $detectedId shell am start -S -n com.openpodcasts.app/.MainActivity
+        Start-Sleep -Seconds 3
 
-Write-Host "[*] 10. Capturing device screenshot..."
-$remoteShot = "/sdcard/openpodcasts_phone.png"
-$localShot = "$ARTIFACT_DIR\openpodcasts_phone.png"
-& $ADB -s RFGL705LSPK shell screencap -p $remoteShot
-& $ADB -s RFGL705LSPK pull $remoteShot $localShot
-Copy-Item $localShot "$BASE_DIR\openpodcasts_phone.png" -Force
-
-Write-Host "[+] All done! Phone screenshot saved to $localShot"
+        Write-Host "[*] 10. Capturing device screenshot..."
+        $remoteShot = "/sdcard/openpodcasts_phone.png"
+        $localShot = "$ARTIFACT_DIR\openpodcasts_phone.png"
+        & $ADB -s $detectedId shell screencap -p $remoteShot
+        & $ADB -s $detectedId pull $remoteShot $localShot
+        if (Test-Path $localShot) {
+            Copy-Item $localShot "$BASE_DIR\openpodcasts_phone.png" -Force
+            Write-Host "[+] All done! Phone screenshot saved to $localShot"
+        }
+    } else {
+        Write-Warning "ADB install encountered an error. Device might be locked or busy."
+    }
+} else {
+    Write-Host "[i] No ADB device attached right now. APK is signed and ready at: $final_apk"
+}
