@@ -3230,7 +3230,29 @@
     window.onNativePlaybackState = function(isPlaying) {
       if (app && app.audio) {
         app.audio.isPlaying = isPlaying;
+        if (!isPlaying) {
+          app.audio.stopTrimSilenceMonitor();
+          if (app.audio.html5) {
+            try { app.audio.html5.pause(); } catch(e) {}
+          }
+        } else {
+          app.audio.startTrimSilenceMonitor();
+        }
         app.onPlaybackStateChange(isPlaying);
+
+        if (typeof window.AndroidBridge !== 'undefined' && window.AndroidBridge.syncToAuto && app.currentEpisode) {
+          try {
+            window.AndroidBridge.syncToAuto(
+              app.currentEpisode.id || 'current',
+              app.currentEpisode.title || 'Episode',
+              (app.currentShow && app.currentShow.title) || 'Podcast',
+              app.currentEpisode.artwork || '',
+              Math.floor(app.audio.currentTime * 1000),
+              Math.floor(app.audio.duration * 1000),
+              isPlaying
+            );
+          } catch(e) {}
+        }
       }
     };
 
@@ -6660,6 +6682,14 @@
       try {
         if (app && app.audio) {
           app.audio.isPlaying = isPlaying;
+          if (!isPlaying) {
+            app.audio.stopTrimSilenceMonitor();
+            if (app.audio.html5) {
+              try { app.audio.html5.pause(); } catch(e) {}
+            }
+          } else {
+            app.audio.startTrimSilenceMonitor();
+          }
           app.onPlaybackStateChange(isPlaying);
         }
       } catch(e) {

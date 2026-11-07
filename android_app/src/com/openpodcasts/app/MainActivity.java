@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.media.audiofx.LoudnessEnhancer;
@@ -64,6 +67,10 @@ public class MainActivity extends Activity {
     private ExecutorService networkExecutor = Executors.newFixedThreadPool(3);
     private BroadcastReceiver evalReceiver;
     private BroadcastReceiver autoSyncReceiver;
+    private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+    private boolean resumeOnFocusGain = false;
+    private BroadcastReceiver noisyAudioReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -193,6 +200,9 @@ public class MainActivity extends Activity {
                 if (intent != null && AutoMediaBrowserService.ACTION_SYNC_TO_UI.equals(intent.getAction())) {
                     String epId = intent.getStringExtra("epId");
                     boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
+                    if (!isPlaying) {
+                        pauseAudioInternal();
+                    }
                     runOnUiThread(() -> {
                         if (webView != null) {
                             webView.evaluateJavascript("if(window.onAutoPlaybackSync) window.onAutoPlaybackSync('" + epId + "'," + isPlaying + ");", null);
@@ -206,6 +216,19 @@ public class MainActivity extends Activity {
         } else {
             registerReceiver(autoSyncReceiver, new IntentFilter(AutoMediaBrowserService.ACTION_SYNC_TO_UI));
         }
+
+        noisyAudioReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                    Log.i("OpenPodcastsApp", "Audio becoming noisy (headphones/BT disconnected), auto-pausing podcast");
+                    resumeOnFocusGain = false;
+                    pauseAudioInternal();
+                    abandonAudioFocus();
+                }
+            }
+        };
+        registerReceiver(noisyAudioReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
 
         webView.loadUrl("file:///android_asset/index.html");
     }
@@ -296,9 +319,141 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            Log.d("OpenPodcastsApp", "onAudioFocusChange: " + focusChange);
+            switch (focusChange) {
+                case AudioManager.AUDIOFOCUS_LOSS:
+                    // Another app (e.g. YouTube, Spotify, TikTok, Music, Game) started playing audio
+                    Log.i("OpenPodcastsApp", "Permanent audio focus loss, auto-pausing podcast");
+                    resumeOnFocusGain = false;
+                    pauseAudioInternal();
+                    abandonAudioFocus();
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                    // Transient loss (e.g. phone call, assistant, voice note)
+                    Log.i("OpenPodcastsApp", "Transient audio focus loss, auto-pausing podcast");
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        resumeOnFocusGain = true;
+                        pauseAudioInternal();
+                    }
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                    // Short notification or navigation instruction - pause so user doesn't miss podcast speech
+                    Log.i("OpenPodcastsApp", "Transient audio focus loss (can duck), auto-pausing podcast for speech clarity");
+                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                        resumeOnFocusGain = true;
+                        pauseAudioInternal();
+                    }
+                    break;
+                case AudioManager.AUDIOFOCUS_GAIN:
+                    // Regained audio focus after transient interruption ends
+                    Log.i("OpenPodcastsApp", "Audio focus regained, resuming podcast");
+                    if (mediaPlayer != null && resumeOnFocusGain) {
+                        resumeOnFocusGain = false;
+                        resumeAudioInternal();
+                    }
+                    break;
+            }
+        }
+    };
+
+    private boolean requestAudioFocus() {
+        if (audioManager == null) {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        }
+        if (audioManager == null) return true;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest == null) {
+                AudioAttributes playbackAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build();
+                audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(playbackAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setWillPauseWhenDucked(true)
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener, handler)
+                    .build();
+            }
+            int res = audioManager.requestAudioFocus(audioFocusRequest);
+            return res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        } else {
+            int res = audioManager.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            );
+            return res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        }
+    }
+
+    private void abandonAudioFocus() {
+        if (audioManager == null) return;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (audioFocusRequest != null) {
+                    audioManager.abandonAudioFocusRequest(audioFocusRequest);
+                }
+            } else {
+                audioManager.abandonAudioFocus(audioFocusChangeListener);
+            }
+        } catch (Exception e) {
+            Log.w("OpenPodcastsApp", "abandonAudioFocus error: " + e.getMessage());
+        }
+    }
+
+    private void pauseAudioInternal() {
+        runOnUiThread(() -> {
+            try {
+                if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                    mediaPlayer.pause();
+                    stopProgressUpdates();
+                    if (webView != null) {
+                        webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(false);", null);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("OpenPodcastsApp", "pauseAudioInternal error: " + e.getMessage());
+            }
+        });
+    }
+
+    private void resumeAudioInternal() {
+        runOnUiThread(() -> {
+            try {
+                if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+                    if (requestAudioFocus()) {
+                        mediaPlayer.start();
+                        startProgressUpdates();
+                        if (webView != null) {
+                            webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(true);", null);
+                        }
+                    } else {
+                        Log.w("OpenPodcastsApp", "Could not obtain audio focus to resume");
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("OpenPodcastsApp", "resumeAudioInternal error: " + e.getMessage());
+            }
+        });
+    }
+
     private void initMediaPlayer() {
         mediaPlayer = new MediaPlayer();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build();
+            mediaPlayer.setAudioAttributes(audioAttributes);
+        }
         mediaPlayer.setOnPreparedListener(mp -> {
+            if (!requestAudioFocus()) {
+                Log.w("OpenPodcastsApp", "AudioFocus not granted onPrepared");
+            }
             mp.start();
             applyVoiceBoost();
             int durationSec = mp.getDuration() / 1000;
@@ -309,6 +464,8 @@ public class MainActivity extends Activity {
         });
 
         mediaPlayer.setOnCompletionListener(mp -> {
+            abandonAudioFocus();
+            stopProgressUpdates();
             runOnUiThread(() -> {
                 webView.evaluateJavascript("if(window.onNativePlayerEnded) window.onNativePlayerEnded();", null);
             });
@@ -316,6 +473,8 @@ public class MainActivity extends Activity {
 
         mediaPlayer.setOnErrorListener((mp, what, extra) -> {
             Log.e("OpenPodcastsApp", "MediaPlayer Error: " + what + ", " + extra);
+            abandonAudioFocus();
+            stopProgressUpdates();
             runOnUiThread(() -> {
                 webView.evaluateJavascript("if(window.onNativePlayerError) window.onNativePlayerError(" + what + ");", null);
             });
@@ -375,10 +534,19 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void playAudio(String audioUrl) {
+            resumeOnFocusGain = false;
             runOnUiThread(() -> {
                 try {
+                    requestAudioFocus();
                     currentAudioUrl = audioUrl;
                     mediaPlayer.reset();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build();
+                        mediaPlayer.setAudioAttributes(audioAttributes);
+                    }
                     mediaPlayer.setDataSource(audioUrl);
                     mediaPlayer.prepareAsync();
                     webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(true);", null);
@@ -390,32 +558,15 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void pauseAudio() {
-            runOnUiThread(() -> {
-                try {
-                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                        mediaPlayer.pause();
-                        stopProgressUpdates();
-                        webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(false);", null);
-                    }
-                } catch (Exception e) {
-                    Log.e("OpenPodcastsApp", "pauseAudio error: " + e.getMessage());
-                }
-            });
+            resumeOnFocusGain = false;
+            pauseAudioInternal();
+            abandonAudioFocus();
         }
 
         @JavascriptInterface
         public void resumeAudio() {
-            runOnUiThread(() -> {
-                try {
-                    if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-                        mediaPlayer.start();
-                        startProgressUpdates();
-                        webView.evaluateJavascript("if(window.onNativePlaybackState) window.onNativePlaybackState(true);", null);
-                    }
-                } catch (Exception e) {
-                    Log.e("OpenPodcastsApp", "resumeAudio error: " + e.getMessage());
-                }
-            });
+            resumeOnFocusGain = false;
+            resumeAudioInternal();
         }
 
         @JavascriptInterface
@@ -1319,6 +1470,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         stopProgressUpdates();
+        abandonAudioFocus();
+        if (noisyAudioReceiver != null) {
+            try { unregisterReceiver(noisyAudioReceiver); } catch (Exception ignored) {}
+            noisyAudioReceiver = null;
+        }
         if (evalReceiver != null) {
             try { unregisterReceiver(evalReceiver); } catch (Exception ignored) {}
             evalReceiver = null;
